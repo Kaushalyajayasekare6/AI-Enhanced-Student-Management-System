@@ -1,0 +1,50 @@
+.page { display: flex; min-height: 100vh; background: #f8fafc; }
+.main { flex: 1; padding: 28px; }
+
+.top { display: flex; gap: 16px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.overallCard { background: #fff; padding: 14px; border-radius: 10px; border: 1px solid #eef2ff; min-width: 180px; }
+.title { font-size: 13px; color: #64748b; }
+.value { font-size: 28px; font-weight: 800; color: #0f172a; margin-top: 6px; }
+.small { font-size: 12px; color: #94a3b8; }
+
+.controls { display: flex; gap: 10px; align-items: center; color: #0f172a; font-weight: 600; }
+
+.chartCard, .subTable, .daily { background: #fff; padding: 14px; border-radius: 10px; border: 1px solid #eef2ff; margin-bottom: 14px; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; }
+
+.low { color: #dc2626; font-weight: 700; }
+.present { color: #16a34a; font-weight: 700; }
+.absent { color: #dc2626; font-weight: 700; }
+.late { color: #f59e0b; font-weight: 700; }
+
+.dailyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.searchDate {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.noData {
+  padding: 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.holidayRow {
+  background-color: #fef3c7 !important;
+}
+
+.holidayText {
+  color: #d97706;
+  font-weight: 600;
+}

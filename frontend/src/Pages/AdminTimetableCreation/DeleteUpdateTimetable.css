@@ -1,0 +1,316 @@
+/* DeleteUpdateTimetable.css */
+
+.delete-update-timetable {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 40px 20px;
+}
+
+.delete-update-timetable .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 15px;
+  padding: 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.delete-update-timetable h1 {
+  color: #667eea;
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.delete-update-timetable .subtitle {
+  text-align: center;
+  color: #666;
+  font-size: 1rem;
+  margin-bottom: 30px;
+}
+
+/* Alerts */
+.alert {
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert-error {
+  background-color: #fee;
+  color: #c33;
+  border-left: 4px solid #c33;
+}
+
+.alert-success {
+  background-color: #efe;
+  color: #3c3;
+  border-left: 4px solid #3c3;
+}
+
+/* Timetables Section */
+.timetables-section {
+  margin-bottom: 40px;
+}
+
+.timetables-section h2 {
+  color: #333;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #667eea;
+}
+
+.loading,
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 1.1rem;
+}
+
+/* Timetables Grid */
+.timetables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.timetable-card {
+  background: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  transform: translateY(0);
+}
+
+.timetable-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+  transform: translateY(-5px);
+}
+
+.timetable-card.selected {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+}
+
+.timetable-card .card-header {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.timetable-card.selected .card-header {
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+.timetable-card h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.timetable-card.selected h3 {
+  color: white;
+}
+
+.timetable-card .card-body p {
+  margin: 8px 0;
+  font-size: 0.95rem;
+  color: #666;
+}
+
+.timetable-card.selected .card-body p {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.timetable-card .card-body strong {
+  color: #333;
+}
+
+.timetable-card.selected .card-body strong {
+  color: white;
+}
+
+/* Actions Section */
+.actions-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 30px;
+  border: 2px solid #667eea;
+}
+
+.actions-section h2 {
+  color: #667eea;
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+}
+
+/* Timetable Details */
+.timetable-details {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 25px;
+  border: 1px solid #ddd;
+}
+
+.timetable-details h3 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.detail-item {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+}
+
+.detail-item label {
+  display: block;
+  font-weight: 600;
+  color: #667eea;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.detail-item span {
+  color: #333;
+  font-size: 1rem;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 12px 30px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  min-width: 180px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-update {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-update:hover:not(:disabled) {
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+}
+
+.btn-delete {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.btn-delete:hover:not(:disabled) {
+  box-shadow: 0 10px 25px rgba(245, 87, 108, 0.4);
+  transform: translateY(-3px);
+}
+
+.btn-cancel {
+  background: #ccc;
+  color: #333;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #aaa;
+  color: white;
+  transform: translateY(-3px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .delete-update-timetable .container {
+    padding: 20px;
+  }
+
+  .delete-update-timetable h1 {
+    font-size: 2rem;
+  }
+
+  .timetables-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .actions-section {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .delete-update-timetable {
+    padding: 20px 10px;
+  }
+
+  .delete-update-timetable .container {
+    border-radius: 10px;
+    padding: 15px;
+  }
+
+  .delete-update-timetable h1 {
+    font-size: 1.5rem;
+  }
+
+  .timetables-section h2,
+  .actions-section h2 {
+    font-size: 1.2rem;
+  }
+}

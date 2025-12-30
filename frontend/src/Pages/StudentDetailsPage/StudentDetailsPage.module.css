@@ -1,0 +1,105 @@
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+  background: #f9fafb;
+}
+
+.main {
+  flex: 1;
+  padding: 32px;
+}
+
+.pageTitle {
+  font-size: 26px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.pageSubtitle {
+  font-size: 15px;
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+/* Navigation Bar */
+.navbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 10px;
+}
+
+.navbar button {
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  color: #374151;
+}
+
+.navbar button:hover {
+  color: #2563eb;
+}
+
+.navbar .active {
+  border-bottom: 2px solid #2563eb;
+  color: #2563eb;
+}
+
+/* Section Styling */
+.section {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  margin-bottom: 20px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.table th, .table td {
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  text-align: center;
+}
+
+.table th {
+  background: #f3f4f6;
+}
+
+/* Risk Badges */
+.riskBadge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.low { background: #dcfce7; color: #15803d; }
+.medium { background: #fef9c3; color: #ca8a04; }
+.high { background: #fee2e2; color: #b91c1c; }
+
+/* Attendance Badge */
+.attendanceBadge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.attendanceBadge.low { background: #fee2e2; color: #b91c1c; }
+.attendanceBadge.medium { background: #fef9c3; color: #ca8a04; }
+.attendanceBadge.high { background: #dcfce7; color: #15803d; }

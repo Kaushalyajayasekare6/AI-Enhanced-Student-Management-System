@@ -1,0 +1,5 @@
+.timetableCard { background:#fff; padding:20px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
+.table { width:100%; border-collapse:collapse; text-align:center; }
+.table th, .table td { border:1px solid #e2e8f0; padding:8px; }
+.day { font-weight:600; color:#1e293b; }
+select { width:100%; margin-bottom:4px; padding:4px; border-radius:4px; border:1px solid #cbd5e1; }

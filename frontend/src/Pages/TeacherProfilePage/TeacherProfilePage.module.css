@@ -1,0 +1,15 @@
+.dashboard { display:flex; min-height:100vh; background:#f8fafc; }
+.main { flex:1; padding:28px; }
+.title { font-size:22px; font-weight:700; }
+.subtitle { color:#64748b; margin-bottom:12px; }
+
+.card { background:#fff; padding:16px; border-radius:10px; box-shadow:0 6px 18px rgba(2,6,23,0.03); max-width:800px; }
+.row { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+.row label { font-weight:600; color:#0f172a; }
+.row input, .row textarea { padding:8px 10px; border-radius:8px; border:1px solid #e6eefc; font-size:14px; }
+.row textarea { min-height:80px; resize:vertical; }
+
+.actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+.edit { background:#2563eb; color:#fff; padding:8px 12px; border-radius:8px; border:none; }
+.save { background:#10b981; color:#fff; padding:8px 12px; border-radius:8px; border:none; }
+.cancel { background:#e6eefc; color:#0f172a; padding:8px 12px; border-radius:8px; border:none; }

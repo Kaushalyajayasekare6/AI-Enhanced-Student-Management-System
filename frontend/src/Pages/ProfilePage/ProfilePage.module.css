@@ -1,0 +1,6 @@
+.page{ display:flex; min-height:100vh; background:#f8fafc; }
+.main{ flex:1; padding:28px; }
+.card{ background:#fff; padding:16px; border-radius:10px; border:1px solid #eef2ff; margin-bottom:16px; }
+.grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:12px; }
+.grid div{ background:#fbfdff; padding:10px; border-radius:8px; border:1px solid #f1f5f9; }
+.grid .full{ grid-column:1/-1; }

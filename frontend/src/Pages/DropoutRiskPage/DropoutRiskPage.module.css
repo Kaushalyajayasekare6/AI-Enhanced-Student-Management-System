@@ -1,0 +1,11 @@
+.page{ display:flex; min-height:100vh; background:#f8fafc; }
+.main{ flex:1; padding:28px; }
+.container{ display:grid; grid-template-columns:1fr 320px; gap:16px; align-items:start; }
+.summary{ background:#fff; padding:16px; border-radius:10px; border:1px solid #eef2ff; }
+.top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.title{ margin:0; color:#0f172a; }
+.badge{ color:#fff; padding:6px 10px; border-radius:8px; font-weight:700; display:inline-block; margin-top:6px; }
+.metrics{ text-align:right; color:#475569; }
+.factors, .recs{ margin-top:12px; }
+.rightCard{ background:#fff; padding:16px; border-radius:10px; border:1px solid #eef2ff; text-align:left; }
+.contactBtn{ background:#2563eb; color:#fff; padding:10px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }

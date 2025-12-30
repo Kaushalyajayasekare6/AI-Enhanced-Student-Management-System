@@ -1,0 +1,21 @@
+.dashboard { display:flex; min-height:100vh; background:#f3f4f6; }
+.main { flex:1; padding:28px; }
+.title { font-size:22px; font-weight:700; color:#0f172a; }
+.subtitle { color:#64748b; margin-bottom:12px; }
+
+.controls { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px; }
+.tabs { display:flex; gap:8px; }
+.tabs button { padding:8px 12px; border-radius:8px; border:none; background:#e5e7eb; cursor:pointer; }
+.activeTab { background:#2563eb; color:#fff; font-weight:600; }
+
+.searchWrap input { padding:8px 10px; border-radius:8px; border:1px solid #e6eefc; }
+
+.contentRow { display:flex; gap:12px; align-items:flex-start; }
+.list { flex:1; display:flex; flex-direction:column; gap:10px; }
+.studentCard { background:#fff; padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 6px 18px rgba(2,6,23,0.03); }
+.name { font-weight:700; color:#0f172a; }
+.meta { color:#64748b; margin-top:6px; }
+
+.viewBtn { background:#2563eb; color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; }
+
+.sideCard { width:320px; background:#fff; padding:12px; border-radius:10px; box-shadow:0 6px 18px rgba(2,6,23,0.03); }

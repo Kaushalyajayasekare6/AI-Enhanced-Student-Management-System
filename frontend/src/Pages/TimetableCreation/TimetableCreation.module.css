@@ -1,0 +1,6 @@
+.dashboard { display: flex; min-height: 100vh; background:#f5f7fa; }
+.main { flex:1; padding:24px 32px; display:flex; flex-direction:column; }
+.toolbar { display:flex; gap:12px; margin-bottom:24px; align-items:center; }
+.toolbar button { padding:8px 14px; border-radius:8px; border:none; background:#3b82f6; color:#fff; cursor:pointer; }
+.toolbar button:hover { background:#2563eb; }
+.toolbar select { padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; }

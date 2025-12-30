@@ -1,0 +1,31 @@
+.page { display: flex; min-height: 100vh; background: #f8fafc; }
+.main { flex: 1; padding: 28px; }
+
+.rankCard {
+  background: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #eef2ff;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+.top { color: #16a34a; }
+.middle { color: #f59e0b; }
+.at { color: #dc2626; }
+
+.toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.toggle { display: flex; gap: 8px; }
+.toggle button { padding: 8px 12px; border-radius: 8px; border: 1px solid #e6eefc; background: #fff; cursor: pointer; font-weight: 600; }
+.toggle .active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+.filters { display: flex; gap: 8px; align-items: center; }
+.filters select, .filters input { padding: 8px 10px; border-radius: 8px; border: 1px solid #e6eefc; }
+.export { padding: 8px 12px; background: #16a34a; color: #fff; border-radius: 8px; border: none; cursor: pointer; font-weight: 700; }
+
+.tableWrapper{ overflow-x:auto; border-radius:10px; margin-bottom:16px; }
+.table{ width:100%; border-collapse:collapse; background:#fff; box-shadow:0 6px 18px rgba(2,6,23,0.03); }
+.table th, .table td{ padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:left; }
+.table th{ background:#f8fafc; font-weight:700; color:#0f172a; }
+.subj{ font-weight:600; color:#0b4be0; }
+
+.chartCard{ background:#fff; padding:12px; border-radius:10px; border:1px solid #eef2ff; margin-bottom:20px; }

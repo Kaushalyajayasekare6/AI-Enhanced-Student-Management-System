@@ -1,0 +1,83 @@
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+  background: #f8fafc; /* light gray background */
+}
+
+.main {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pageTitle {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 16px;
+  margin-bottom: 4px;
+  color: #1e293b;
+}
+
+.pageSubtitle {
+  font-size: 15px;
+  color: #64748b;
+  margin-bottom: 24px;
+}
+
+/* Controls section */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.viewToggle button {
+  padding: 8px 14px;
+  border: 1px solid #cbd5e1;
+  background: #f1f5f9;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.viewToggle button:hover {
+  background: #e2e8f0;
+}
+
+.viewToggle button.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.dateRange input {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.dateRange span {
+  margin: 0 6px;
+  color: #475569;
+}
+
+.exportBtn {
+  padding: 8px 14px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.exportBtn:hover {
+  background: #15803d;
+}
