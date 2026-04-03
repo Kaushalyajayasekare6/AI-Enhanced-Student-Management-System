@@ -51,6 +51,27 @@
   outline: none;
 }
 
+.passwordRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.passwordRow input {
+  flex: 1;
+}
+
+.viewPasswordBtn {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1f2937;
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* Actions */
 .actions {
   display: flex;

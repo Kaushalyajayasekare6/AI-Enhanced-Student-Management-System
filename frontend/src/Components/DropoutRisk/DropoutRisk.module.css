@@ -108,3 +108,66 @@
 .contactBtn:hover {
   background: #2563eb;
 }
+
+/* Loading State */
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* Error and No Data States */
+.error, .noData {
+  padding: 40px;
+  text-align: center;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.noData {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+}
+
+.error h3, .noData h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.error p, .noData p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+}
+
+/* Retry Button */
+.retryBtn {
+  padding: 10px 20px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.retryBtn:hover {
+  background: #2563eb;
+}
+
+/* No Factors Message */
+.noFactors {
+  color: #6b7280;
+  font-style: italic;
+  font-size: 14px;
+}

@@ -1,9 +1,47 @@
-.tableWrapper{ overflow-x:auto; border-radius:10px; margin-bottom:16px; }
-.table{ width:100%; border-collapse:collapse; background:#fff; box-shadow:0 6px 18px rgba(2,6,23,0.03); }
-.table th, .table td{ padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:left; }
-.table th{ background:#f8fafc; font-weight:700; color:#0f172a; }
-.subj{ font-weight:600; color:#0b4be0; }
-.chartCard{ background:#fff; padding:12px; border-radius:10px; border:1px solid #eef2ff; margin-bottom:12px; }
+.tableWrapper{ 
+  overflow-x:auto; 
+  border-radius:10px; 
+  margin-bottom:16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.table{ 
+  width:100%; 
+  border-collapse:collapse; 
+  background:#fff; 
+  box-shadow:0 6px 18px rgba(2,6,23,0.03);
+  min-width: 600px;
+}
+
+.table th, .table td{ 
+  padding:12px 16px; 
+  border-bottom:1px solid #f1f5f9; 
+  text-align:left; 
+}
+
+.table th{ 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight:700; 
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.subj{ 
+  font-weight:600; 
+  color:#0b4be0; 
+  font-size: 16px;
+}
+
+.chartCard{ 
+  background:#fff; 
+  padding:16px; 
+  border-radius:10px; 
+  border:1px solid #eef2ff; 
+  margin-bottom:12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 .termSummary {
   background: #fff;
   padding: 16px;
@@ -35,16 +73,57 @@
 .predictionCard {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 20px;
-  border-radius: 12px;
+  padding: 24px;
+  border-radius: 16px;
   margin-bottom: 24px;
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+  overflow-x: auto;
 }
 
 .predictionCard h3 {
-  margin: 0 0 16px 0;
-  font-size: 20px;
+  margin: 0 0 20px 0;
+  font-size: 24px;
   font-weight: 700;
+}
+
+.predictionTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 700px;
+}
+
+.predictionTable th,
+.predictionTable td {
+  padding: 16px 20px;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.predictionTable th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  position: sticky;
+  top: 0;
+}
+
+.predictionTable td {
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.predictionTable tr:nth-child(even) {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.predictionTable tr:hover {
+  background: rgba(102, 126, 234, 0.1);
+  transition: background-color 0.2s ease;
 }
 
 .predictionCard h4 {
@@ -101,7 +180,34 @@
 }
 
 @media (max-width: 768px) {
-  .predictionGrid {
-    grid-template-columns: 1fr;
+  .predictionCard {
+    padding: 16px;
+    margin: 0 -16px 24px -16px;
+    border-radius: 0;
+  }
+  
+  .predictionTable {
+    min-width: 600px;
+    font-size: 14px;
+  }
+  
+  .predictionTable th,
+  .predictionTable td {
+    padding: 12px 8px;
+  }
+  
+  .tableWrapper {
+    margin: 0 -16px 16px -16px;
+    border-radius: 0;
+  }
+  
+  .table {
+    min-width: 500px;
+  }
+  
+  .table th,
+  .table td {
+    padding: 8px 6px;
+    font-size: 14px;
   }
 }

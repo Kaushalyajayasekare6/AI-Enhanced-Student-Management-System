@@ -1,7 +1,7 @@
 .dashboard {
   display: flex;
   min-height: 100vh;
-  background: #fff;
+  background: linear-gradient(180deg, #f8fbff 0%, #f1f5f9 100%);
 }
 
 .main {
@@ -12,14 +12,15 @@
 }
 
 .pageTitle {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
   margin-top: 16px;
+  color: #0f172a;
 }
 
 .pageSubtitle {
   font-size: 14px;
-  color: #666;
+  color: #475569;
   margin-bottom: 24px;
 }
 
@@ -29,14 +30,18 @@
   gap: 12px;
   margin-bottom: 16px;
   align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
 }
 
 .viewToggle button {
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  background: #f9f9fb;
+  padding: 7px 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
 .viewToggle button.active {
@@ -56,10 +61,11 @@
 }
 
 .exportBtn {
-  padding: 6px 12px;
+  padding: 8px 13px;
   background: #22c55e;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 600;
 }

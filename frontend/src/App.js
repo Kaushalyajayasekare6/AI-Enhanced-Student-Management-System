@@ -37,6 +37,7 @@ import AdminTimetableCreation from "./Pages/AdminTimetableCreation/AdminTimetabl
 import StudentCalendar from "./Pages/StudentCalendar/StudentCalendar";
 
 import axios from "axios";
+import { LayoutProvider } from './contexts/LayoutContext';
 
 export const predictMarks = (data) => {
   return axios.post(
@@ -62,9 +63,10 @@ export const predictDropoutRisk = (data) => {
 
 function App() {
   return (
-    <Router>
-      <div className="app">
-        <Routes>
+    <LayoutProvider>
+      <Router>
+        <div className="app">
+          <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
@@ -334,9 +336,12 @@ function App() {
         </Routes>
       </div>
     </Router>
+    </LayoutProvider>
   );
 }
 
 
 
 export default App;
+
+//cd models/Dropout && uvicorn app:app --reload --port 8001

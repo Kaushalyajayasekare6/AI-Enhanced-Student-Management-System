@@ -72,6 +72,7 @@ const TeacherAttendancePage = () => {
   const [schoolDays, setSchoolDays] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [viewMode, setViewMode] = useState("table"); // "table" or "calendar"
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const role = getStoredRole() || "teacher";
 
   const today = new Date();
@@ -105,6 +106,16 @@ const TeacherAttendancePage = () => {
   };
 
   const dates = generateDates();
+  const getCalendarMonthRange = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    return {
+      from: firstDay.toISOString().slice(0, 10),
+      to: lastDay.toISOString().slice(0, 10),
+    };
+  };
 
   // 🔹 Fetch students of this teacher's class
   const fetchStudents = async () => {
@@ -183,11 +194,19 @@ const TeacherAttendancePage = () => {
   // 🔹 Fetch school days for calendar view
   const fetchSchoolDays = useCallback(async () => {
     try {
-      const dates = generateDates();
-      if (dates.length === 0) return;
-      
-      const from = dates[0];
-      const to = dates[dates.length - 1];
+      let from;
+      let to;
+
+      if (viewMode === "calendar") {
+        const range = getCalendarMonthRange();
+        from = range.from;
+        to = range.to;
+      } else {
+        const rangeDates = generateDates();
+        if (rangeDates.length === 0) return;
+        from = rangeDates[0];
+        to = rangeDates[rangeDates.length - 1];
+      }
       const res = await axios.get(
         `${API_ENDPOINTS.SCHOOL_DAYS.BASE}?from=${from}&to=${to}`,
         { headers: getAuthHeaders() }
@@ -201,7 +220,7 @@ const TeacherAttendancePage = () => {
     } catch (error) {
       console.error("Error fetching school days:", error);
     }
-  }, [range, customFrom, customTo]);
+  }, [range, customFrom, customTo, viewMode, currentMonth]);
 
   // 🔹 Refresh school days periodically (every 30 seconds) to sync with admin updates
   useEffect(() => {
@@ -285,8 +304,8 @@ const TeacherAttendancePage = () => {
   // 🔹 Generate calendar view
   const generateCalendar = () => {
     const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
@@ -307,10 +326,11 @@ const TeacherAttendancePage = () => {
       </div>
     );
 
-    const days = [];
-    // Empty cells
+    // Build all days array (padding + month days)
+    const allDays = [];
+    // Empty cells for start of month
     for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(<div key={`empty-${i}`} className={styles.calendarDayCell}></div>);
+      allDays.push(<div key={`empty-${i}`} className={styles.calendarDayCell}></div>);
     }
 
     // Days of month
@@ -331,7 +351,7 @@ const TeacherAttendancePage = () => {
       const totalStudents = students.length;
       const attendancePercent = totalStudents > 0 ? Math.round((attendanceCount / totalStudents) * 100) : 0;
 
-      days.push(
+      allDays.push(
         <div
           key={day}
           className={`${styles.calendarDayCell} ${
@@ -367,21 +387,36 @@ const TeacherAttendancePage = () => {
       );
     }
 
-    // Group into weeks
-    const weeks = [];
-    for (let i = 0; i < days.length; i += 7) {
-      weeks.push(
-        <div key={`week-${i}`} className={styles.calendarWeek}>
-          {days.slice(i, i + 7)}
-        </div>
-      );
+    // Group into explicit weeks (6 weeks max for full month coverage)
+    for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
+      const weekStart = weekIndex * 7;
+      const weekCells = allDays.slice(weekStart, weekStart + 7);
+      if (weekCells.length > 0) {
+        calendar.push(
+          <div key={`week-${weekIndex}`} className={styles.calendarWeek}>
+            {weekCells}
+          </div>
+        );
+      }
     }
 
-    calendar.push(...weeks);
     return calendar;
   };
 
   if (loading) return <p>Loading...</p>;
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+
+  const navigateMonth = (direction) => {
+    setCurrentMonth((prev) => {
+      const next = new Date(prev);
+      next.setMonth(prev.getMonth() + direction);
+      return next;
+    });
+  };
 
   return (
     <div className={styles.dashboard}>
@@ -461,6 +496,18 @@ const TeacherAttendancePage = () => {
 
         {viewMode === "calendar" && (
           <div className={styles.calendarContainer}>
+            <div className={styles.calendarControls}>
+              <button className={styles.navArrow} onClick={() => navigateMonth(-1)} aria-label="Previous month">
+                ‹
+              </button>
+              <div className={styles.monthHeader}>
+                <h3 className={styles.monthTitle}>{monthNames[currentMonth.getMonth()]}</h3>
+                <span className={styles.yearTitle}>{currentMonth.getFullYear()}</span>
+              </div>
+              <button className={styles.navArrow} onClick={() => navigateMonth(1)} aria-label="Next month">
+                ›
+              </button>
+            </div>
             <h3 className={styles.calendarTitle}>School Calendar - Click a date to mark attendance</h3>
             <div className={styles.calendar}>{generateCalendar()}</div>
             <div className={styles.calendarLegend}>

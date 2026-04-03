@@ -12,6 +12,7 @@ const STREAM_OPTIONS = ["Arts", "Commerce", "Tech", "Math", "Science"];
 const TERM_OPTIONS = ["Term 1", "Term 2", "Term 3"];
 
 const AddStudentForm = ({ student = {}, mode = "add", role }) => {
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     enrollmentNo: "",
     firstName: "",
@@ -346,13 +347,24 @@ const AddStudentForm = ({ student = {}, mode = "add", role }) => {
           </div>
           <div className={styles.formGroup}>
             <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              disabled={isViewMode}
-            />
+            <div className={styles.passwordRow}>
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                disabled={isViewMode}
+              />
+              {role === "admin" && (
+                <button
+                  type="button"
+                  className={styles.viewPasswordBtn}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                >
+                  {showPassword ? "Hide" : "View"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </section>

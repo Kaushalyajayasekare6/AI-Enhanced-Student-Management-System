@@ -1,11 +1,231 @@
-.page{ display:flex; min-height:100vh; background:#f8fafc; }
-.main{ flex:1; padding:28px; }
-.container{ display:grid; grid-template-columns:1fr 320px; gap:16px; align-items:start; }
-.summary{ background:#fff; padding:16px; border-radius:10px; border:1px solid #eef2ff; }
-.top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-.title{ margin:0; color:#0f172a; }
-.badge{ color:#fff; padding:6px 10px; border-radius:8px; font-weight:700; display:inline-block; margin-top:6px; }
-.metrics{ text-align:right; color:#475569; }
-.factors, .recs{ margin-top:12px; }
-.rightCard{ background:#fff; padding:16px; border-radius:10px; border:1px solid #eef2ff; text-align:left; }
-.contactBtn{ background:#2563eb; color:#fff; padding:10px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
+.page {
+  display: flex;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.main {
+  flex: 1;
+  padding: 2rem;
+}
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.studentSelect label {
+  font-weight: 600;
+  color: #374151;
+  margin-right: 0.5rem;
+}
+
+.studentSelect select {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 1rem;
+  background: white;
+  min-width: 250px;
+}
+
+.predictBtn {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+  transition: all 0.3s ease;
+}
+
+.predictBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+}
+
+.loading, .error, .empty {
+  text-align: center;
+  padding: 3rem;
+  border-radius: 16px;
+  margin: 2rem 0;
+}
+
+.loading {
+  background: linear-gradient(90deg, #f8fafc, #e2e8f0);
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+.error {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.empty {
+  background: white;
+  color: #6b7280;
+  border: 2px dashed #d1d5db;
+}
+
+.dashboard {
+  display: grid;
+  gap: 2rem;
+}
+
+.cardOverview {
+  background: white;
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  border: 1px solid #f1f5f9;
+}
+
+.riskBadge {
+  color: white;
+  padding: 1.5rem 2rem;
+  border-radius: 20px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  min-width: 150px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+
+.studentInfo h2 {
+  margin: 0 0 0.5rem 0;
+  color: #1e293b;
+  font-size: 1.8rem;
+}
+
+.studentInfo p {
+  margin: 0;
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chartCard, .detailsCard {
+  background: white;
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+  border: 1px solid #f1f5f9;
+}
+
+.chartCard h3, .detailsCard h3 {
+  margin: 0 0 1.5rem 0;
+  color: #1e293b;
+  font-size: 1.3rem;
+}
+
+.marksTable {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border-left: 4px solid #ef4444;
+}
+
+.marksTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.marksTable th, .marksTable td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.marksTable th {
+  font-weight: 600;
+  color: #374151;
+}
+
+.lowMark {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2rem;
+  color: #10b981;
+  font-size: 1.1rem;
+}
+
+.metric {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f0fdf4;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #166534;
+}
+
+.detailsCard h4 {
+  color: #1e293b;
+  margin: 1.5rem 0 1rem 0;
+  font-size: 1.1rem;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+}
+
+.list li {
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.list li:nth-child(even) {
+  background: #f1f5f9;
+  border-left-color: #10b981;
+}
+
+.smallTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.smallTable th,
+.smallTable td {
+  border: 1px solid #e5e7eb;
+  padding: 0.6rem 0.75rem;
+  text-align: center;
+}
+
+.smallTable th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+

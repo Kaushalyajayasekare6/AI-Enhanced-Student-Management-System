@@ -255,10 +255,44 @@ export const getStudentAttendance = async (req, res) => {
       dateFilter.date = { $gte: from, $lte: to };
     }
 
-    const attendance = await Attendance.find({
+    let attendance = await Attendance.find({
       studentId: student._id,
       ...dateFilter,
     }).sort({ date: -1 });
+
+    // 3a. Auto-populate attendance if entirely missing for this range (from DB school days)
+    if (attendance.length === 0) {
+      console.log("🔹 [DEBUG] Student has no attendance records; auto-seeding from school day calendar.");
+
+      const schoolDayFilter = dateFilter.date
+        ? { date: dateFilter.date, isSchoolDay: true }
+        : { date: { $gte: `${new Date().getFullYear()}-01-01`, $lte: `${new Date().getFullYear()}-12-31` }, isSchoolDay: true };
+
+      const schoolDaysToSeed = await SchoolDay.find(schoolDayFilter).sort({ date: 1 });
+
+      const classAssignment = await ClassTeacher.findOne({
+        grade: Number(String(student.grade).replace(/[^0-9]/g, "")),
+        section: student.section,
+      });
+
+      const teacherId = classAssignment?.teacherId || null;
+
+      if (schoolDaysToSeed.length > 0 && teacherId) {
+        const bulkOps = schoolDaysToSeed.map((day) => ({
+          updateOne: {
+            filter: { studentId: student._id, date: day.date },
+            update: { studentId: student._id, teacherId, date: day.date, status: "A" },
+            upsert: true,
+          },
+        }));
+        await Attendance.bulkWrite(bulkOps, { ordered: false });
+
+        attendance = await Attendance.find({
+          studentId: student._id,
+          ...dateFilter,
+        }).sort({ date: -1 });
+      }
+    }
 
     // 4. Fetch school days (holidays) for the same period
     let schoolDays = [];
@@ -324,10 +358,10 @@ export const markStudentAttendance = async (req, res) => {
       return res.status(404).json({ message: "Student profile not found" });
     }
 
-    // 3. Get the student's class teacher to associate with attendance
-    const gradeString = `Grade ${student.grade}`;
+    // 3. Get the class teacher, normalizing grade formats
+    const studentGradeNumber = Number(String(student.grade).replace(/[^0-9]/g, ""));
     const classAssignment = await ClassTeacher.findOne({
-      grade: student.grade,
+      grade: studentGradeNumber,
       section: student.section,
     });
 

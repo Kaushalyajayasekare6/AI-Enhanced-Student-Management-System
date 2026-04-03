@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Sidebar from "../../Components/Sidebar/Sidebar";
-import Header from "../../Components/Header/Header";
+import StudentLayout from "../../Components/StudentLayout/StudentLayout";
 import StudentMarks from "../../Components/StudentMarks/StudentMarks";
 import styles from "./StudentMarksPage.module.css";
 import jsPDF from "jspdf";
@@ -123,32 +122,28 @@ const StudentMarksPage = () => {
     : "";
 
   return (
-    <div className={styles.page}>
-      <Sidebar role={role} />
-      <main className={styles.main}>
-        <Header title="Marks & Predictions" />
+    <StudentLayout title="Marks & Predictions" role={role}>
+      {/* Class rank summary */}
+      <div className={`${styles.rankCard} ${styles[categoryClass] || ""}`}>
+        Class Rank: <b>{classRank.position}</b> / {classRank.total} —{" "}
+        <span>{classRank.category}</span>
+      </div>
 
-        {/* Class rank summary */}
-        <div className={`${styles.rankCard} ${styles[categoryClass] || ""}`}>
-          Class Rank: <b>{classRank.position}</b> / {classRank.total} —{" "}
-          <span>{classRank.category}</span>
-        </div>
-
-        {/* Toolbar */}
-        <div className={styles.toolbar}>
-          <div className={styles.toggle}>
-            <button
-              className={view === "term" ? styles.active : ""}
-              onClick={() => {
-                setView("term");
-                setYear(String(currentYear));
-                setTerm(currentTerm);
-              }}
-            >
-              Term
-            </button>
-            <button
-              className={view === "year" ? styles.active : ""}
+      {/* Toolbar */}
+      <div className={styles.toolbar}>
+        <div className={styles.toggle}>
+          <button
+            className={view === "term" ? styles.active : ""}
+            onClick={() => {
+              setView("term");
+              setYear(String(currentYear));
+              setTerm(currentTerm);
+            }}
+          >
+            Term
+          </button>
+          <button
+            className={view === "year" ? styles.active : ""}
               onClick={() => setView("year")}
             >
               Full Year
@@ -188,8 +183,7 @@ const StudentMarksPage = () => {
           term={term}
           searchSubject={searchSubject}
         />
-      </main>
-    </div>
+    </StudentLayout>
   );
 };
 

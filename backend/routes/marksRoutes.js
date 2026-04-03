@@ -1,11 +1,12 @@
 import express from "express";
-import { upsertMarks, getStudentMarks, getAllStudentsMarks, getTeacherClassMarks, getCurrentStudentMarks } from "../controllers/marksController.js";
+import { upsertMarks, upsertMarksBulk, getStudentMarks, getAllStudentsMarks, getTeacherClassMarks, getCurrentStudentMarks } from "../controllers/marksController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // Teachers can add/update marks (protected)
 router.post("/upsert", protect, upsertMarks);
+router.post("/bulk-upsert", protect, upsertMarksBulk);
 
 // Get teacher's class marks (protected - for teachers) - MUST come before /student
 router.get("/teacher-class", protect, getTeacherClassMarks);

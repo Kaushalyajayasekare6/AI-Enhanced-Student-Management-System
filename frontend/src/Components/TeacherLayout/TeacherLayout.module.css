@@ -1,0 +1,22 @@
+.page {
+  display: flex;
+  min-height: 100vh;
+  background: #f9fafb;
+  position: relative;
+}
+
+.main {
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.5);
+  z-index: 998;
+}

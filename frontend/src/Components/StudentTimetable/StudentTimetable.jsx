@@ -3,13 +3,13 @@ import styles from "./StudentTimetable.module.css";
 import axios from "axios";
 import { API_ENDPOINTS, getAuthHeaders } from "../../config/api";
 
-const times = [
-  "08:00-09:00",
-  "09:00-10:00",
-  "10:00-11:00",
-  "11:00-12:00",
-  "13:00-14:00",
-  "14:00-15:00",
+const defaultTimes = [
+  "07:30-08:20",
+  "08:20-09:10",
+  "09:10-10:20",
+  "10:40-11:30",
+  "11:30-12:20",
+  "12:30-13:30",
 ];
 
 const dayMap = {
@@ -21,11 +21,35 @@ const dayMap = {
 };
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+const INTERVAL_ROW = "__LUNCH_INTERVAL__";
+const INTERVAL_AFTER_FALLBACK = "09:10-10:20";
+const INTERVAL_LABEL_FALLBACK = "Lunch Interval 10:20-10:40";
+
+const parseTimeMinutes = (timeStr) => {
+  const [h, m] = String(timeStr).split(":").map((n) => Number(n));
+  if (Number.isNaN(h) || Number.isNaN(m)) return 0;
+  return h * 60 + m;
+};
+
+const formatMinutes = (minutes) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
+const addMinutesToTimeStr = (timeStr, add) => {
+  return formatMinutes(parseTimeMinutes(timeStr) + add);
+};
+
+const parseSlotStartMinutes = (timeSlot) => {
+  const start = String(timeSlot).split("-")[0]?.trim();
+  return parseTimeMinutes(start);
+};
 
 const StudentTimetable = ({ view, selectedDay }) => {
   const [timetable, setTimetable] = useState({});
+  const [timeSlots, setTimeSlots] = useState(defaultTimes);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     const fetchTimetable = async () => {
@@ -38,13 +62,24 @@ const StudentTimetable = ({ view, selectedDay }) => {
         // Transform database format to display format
         const formattedTimetable = {};
         days.forEach(day => {
-          formattedTimetable[day] = new Array(times.length).fill(null);
+          formattedTimetable[day] = new Array(defaultTimes.length).fill(null);
         });
 
         if (res.data && res.data.slots && Array.isArray(res.data.slots)) {
-          res.data.slots.forEach(slot => {
+          const uniqueTimes = Array.from(new Set(res.data.slots.map((slot) => slot.timeSlot)));
+          const sortedTimes = uniqueTimes.slice().sort(
+            (a, b) => parseSlotStartMinutes(a) - parseSlotStartMinutes(b)
+          );
+          if (sortedTimes.length) {
+            setTimeSlots(sortedTimes);
+            days.forEach((day) => {
+              formattedTimetable[day] = new Array(sortedTimes.length).fill(null);
+            });
+          }
+
+          res.data.slots.forEach((slot) => {
             const dayShort = dayMap[slot.day] || slot.day;
-            const timeIndex = times.indexOf(slot.timeSlot);
+            const timeIndex = (sortedTimes.length ? sortedTimes : defaultTimes).indexOf(slot.timeSlot);
             if (timeIndex >= 0 && formattedTimetable[dayShort]) {
               formattedTimetable[dayShort][timeIndex] = {
                 subject: slot.subject || "",
@@ -64,9 +99,10 @@ const StudentTimetable = ({ view, selectedDay }) => {
         // Initialize empty timetable
         const emptyTimetable = {};
         days.forEach(day => {
-          emptyTimetable[day] = new Array(times.length).fill(null);
+          emptyTimetable[day] = new Array(defaultTimes.length).fill(null);
         });
         setTimetable(emptyTimetable);
+        setTimeSlots(defaultTimes);
       } finally {
         setLoading(false);
       }
@@ -80,69 +116,24 @@ const StudentTimetable = ({ view, selectedDay }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const sampleSubjects = [
-    { name: "Maths", type: "heavy", periods_per_week: 5, teacher: "T1" },
-    { name: "English", type: "language", periods_per_week: 5, teacher: "T2" },
-    { name: "Science", type: "heavy", periods_per_week: 4, teacher: "T3" },
-    { name: "History", type: "heavy", periods_per_week: 2, teacher: "T4" },
-    { name: "IT", type: "practical", periods_per_week: 2, teacher: "T5", practical_double: true },
-    { name: "PE", type: "activity", periods_per_week: 2, teacher: "T6" },
-  ];
-
-  const generateTimetable = async () => {
-    try {
-      setGenerating(true);
-      // Example payload; in a full UI you would collect subjects/grade from user
-      const payload = {
-        grade: 7,
-        subjects: sampleSubjects,
-        periods_per_day: 8,
-        solver: "greedy"
-      };
-
-      const res = await axios.post(API_ENDPOINTS.TIMETABLE.GENERATE, payload, { headers: getAuthHeaders() });
-      if (res.data && res.data.timetable) {
-        // Convert to display format: short day keys
-        const formatted = {};
-        Object.entries(res.data.timetable).forEach(([day, periods]) => {
-          const short = dayMap[day] || day;
-          formatted[short] = periods.map(p => (typeof p === 'string' ? { subject: p, teacher: "" } : p));
-        });
-        setTimetable(formatted);
-      }
-    } catch (err) {
-      console.error('Error generating timetable', err);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   const filteredDays = view === "day" ? [selectedDay] : days;
 
   if (loading) {
     return <div className={styles.tableWrapper}><p>Loading timetable...</p></div>;
   }
 
-  // Determine times based on timetable first day length (dynamic)
-  const dynamicTimes = (() => {
-    const firstDay = Object.keys(timetable)[0];
-    const count = firstDay && timetable[firstDay] ? timetable[firstDay].length : times.length;
-    // generate time slots between 07:30 and 13:30 evenly
-    const start = new Date();
-    start.setHours(7, 30, 0, 0);
-    const end = new Date();
-    end.setHours(13, 30, 0, 0);
-    const totalMinutes = (end - start) / 60000;
-    const slotMinutes = Math.floor(totalMinutes / count);
-    const labels = [];
-    let cur = new Date(start);
-    for (let i = 0; i < count; i++) {
-      const next = new Date(cur.getTime() + slotMinutes * 60000);
-      const pad = (n) => (n < 10 ? '0' + n : n);
-      labels.push(`${pad(cur.getHours())}:${pad(cur.getMinutes())}-${pad(next.getHours())}:${pad(next.getMinutes())}`);
-      cur = next;
+  const intervalAfterTime =
+    timeSlots.length >= 8 ? timeSlots[3] : INTERVAL_AFTER_FALLBACK;
+
+  const intervalLabel = (() => {
+    if (timeSlots.length >= 8 && intervalAfterTime && intervalAfterTime.includes("-")) {
+      const parts = intervalAfterTime.split("-");
+      const endStr = parts[1]?.trim();
+      if (!endStr) return INTERVAL_LABEL_FALLBACK;
+      const endPlus20 = addMinutesToTimeStr(endStr, 20);
+      return `Lunch Interval ${endStr}-${endPlus20}`;
     }
-    return labels;
+    return INTERVAL_LABEL_FALLBACK;
   })();
 
   return (
@@ -157,34 +148,47 @@ const StudentTimetable = ({ view, selectedDay }) => {
           </tr>
         </thead>
         <tbody>
-          {dynamicTimes.map((time, rowIndex) => (
-            <tr key={time}>
-                  <td className={styles.timeCell}>{time}</td>
+          {timeSlots
+            .flatMap((time) => (time === intervalAfterTime ? [time, INTERVAL_ROW] : [time]))
+            .map((row, visualIndex) => {
+              if (row === INTERVAL_ROW) {
+                return (
+                  <tr key={INTERVAL_ROW}>
+                    <td className={styles.breakCell}>{intervalLabel}</td>
+                    {filteredDays.map((day) => (
+                      <td key={`${day}-${INTERVAL_ROW}`} className={styles.breakCell}>
+                        {intervalLabel}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              }
+
+              const rowIndex = timeSlots.indexOf(row);
+              return (
+                <tr key={`${row}-${visualIndex}`}>
+                  <td className={styles.timeCell}>{row}</td>
                   {filteredDays.map((day) => {
                     const slot = timetable[day]?.[rowIndex];
-                return (
-                  <td key={day + rowIndex}>
-                    {slot ? (
-                      <div className={`${styles.subject} ${styles[slot.color] || styles.blue}`}>
-                        <strong>{slot.subject}</strong>
-                        {slot.teacher && <div className={styles.teacher}>👨‍🏫 {slot.teacher}</div>}
-                        {slot.room && <div className={styles.room}>📍 {slot.room}</div>}
-                      </div>
-                    ) : (
-                      <span style={{ color: "#ccc" }}>-</span>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-              ))}
+                    return (
+                      <td key={day + rowIndex}>
+                        {slot ? (
+                          <div className={`${styles.subject} ${styles[slot.color] || styles.blue}`}>
+                            <strong>{slot.subject}</strong>
+                            {slot.teacher && <div className={styles.teacher}>👨‍🏫 {slot.teacher}</div>}
+                            {slot.room && <div className={styles.room}>📍 {slot.room}</div>}
+                          </div>
+                        ) : (
+                          <span style={{ color: "#ccc" }}>-</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
         </tbody>
       </table>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={generateTimetable} disabled={generating}>
-              {generating ? "Generating..." : "Generate Timetable (Grade 7)"}
-            </button>
-          </div>
     </div>
   );
 };

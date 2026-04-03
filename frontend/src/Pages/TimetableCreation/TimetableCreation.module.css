@@ -4,3 +4,20 @@
 .toolbar button { padding:8px 14px; border-radius:8px; border:none; background:#3b82f6; color:#fff; cursor:pointer; }
 .toolbar button:hover { background:#2563eb; }
 .toolbar select { padding:6px 10px; border-radius:6px; border:1px solid #cbd5e1; }
+.tableWrapper { overflow: auto; background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; }
+.table { width: 100%; border-collapse: collapse; min-width: 700px; }
+.table th, .table td { border-bottom: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; font-size: 13px; }
+.table th { background: #f8fafc; font-weight: 600; }
+.selectorPanel { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+.groupBlock { margin-bottom: 14px; }
+.groupBlock h3 { margin: 0 0 8px; font-size: 15px; color: #111827; }
+.buttonRow { display: flex; flex-wrap: wrap; gap: 8px; }
+.classBtn { border: 1px solid #cbd5e1; background: #fff; color: #1f2937; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.classBtn:hover { background: #eff6ff; border-color: #93c5fd; }
+.activeBtn { background: #2563eb; color: #fff; border-color: #2563eb; }
+.selectionTitle { margin: 8px 0 10px; font-size: 16px; color: #111827; }
+.timeCell { font-weight: 600; background: #f8fafc; min-width: 112px; font-size: 12px; }
+.breakRowCell { font-weight: 700; background: #fff7ed; color: #b45309; font-size: 12px; }
+.emptySlot { color: #9ca3af; }
+.slotCard { display: flex; flex-direction: column; gap: 3px; }
+.slotMeta { font-size: 11px; color: #4b5563; }

@@ -1,0 +1,25 @@
+.chartCard {
+  background: white;
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+  border: 1px solid #f1f5f9;
+}
+
+.chartSkeleton {
+  background: #f8fafc;
+  padding: 2rem;
+  border-radius: 20px;
+  text-align: center;
+  color: #64748b;
+}
+
+.metric {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f0f8ff;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+}

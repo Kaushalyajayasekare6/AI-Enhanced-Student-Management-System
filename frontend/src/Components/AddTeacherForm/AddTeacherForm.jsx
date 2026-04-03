@@ -5,10 +5,19 @@ import styles from "./AddTeacherForm.module.css";
 import { API_ENDPOINTS, getAuthHeaders } from "../../config/api";
 
 const subjectsList = [
-  "Sinhala", "Tamil", "English", "Science", "Maths", "Geography", "History", "Buddhism",
+  "Sinhala", "Tamil", "English", "Science", "Maths", "Geography", "History",
+  // Religion teachers (faith-specific)
+  "Buddhism", "Hinduism", "Islam", "Catholicism", "Christianity",
+  // Other compulsory / middle level subjects
   "ICT", "Advanced Maths", "BIO", "Physics", "Chemistry", "Technology", "Commerce", "ART",
   "Dancing", "Music", "Art", "Literature English", "Literature Sinhala", "Health",
-  "Civilization", "Social Science"
+  "Civilization", "Social Science",
+  // Civic education aliases
+  "Civic Education", "Citizenship", "Life Competencies",
+  // PTS
+  "PTS (Physical Training)",
+  // Elective
+  "Drama and Theatre"
 ];
 
 const classesList = ["1-5 Grades", "6-9 Grades", "10-11 Grade", "A/L Classes"];
@@ -17,6 +26,7 @@ const AddTeacherForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { mode = "add", teacher = {} } = location.state || {};
+  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: teacher.firstName || "",
@@ -40,6 +50,7 @@ const AddTeacherForm = () => {
   });
 
   const isViewMode = mode === "view";
+  const role = location.state?.role || "admin";
   const isEditMode = mode === "edit";
 
   const handleChange = (e) => {
@@ -252,14 +263,25 @@ const AddTeacherForm = () => {
             onChange={handleChange}
             disabled={isViewMode}
           />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            disabled={isViewMode}
-          />
+          <div className={styles.passwordRow}>
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              disabled={isViewMode}
+            />
+            {role === "admin" && (
+              <button
+                type="button"
+                className={styles.viewPasswordBtn}
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? "Hide" : "View"}
+              </button>
+            )}
+          </div>
         </div>
       </section>
 

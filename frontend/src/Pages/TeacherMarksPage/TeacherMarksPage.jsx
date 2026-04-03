@@ -1,504 +1,478 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Sidebar from "../../Components/Sidebar/Sidebar";
 import Header from "../../Components/Header/Header";
+import StudentMarks from "../../Components/StudentMarks/StudentMarks";
 import styles from "./TeacherMarksPage.module.css";
 import { getStoredRole } from "../../utils/auth";
-import axios from "axios";
 import { API_ENDPOINTS, getAuthHeaders } from "../../config/api";
+import axios from "axios";
+import jsPDF from "jspdf";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 const currentYear = new Date().getFullYear();
 const terms = [1, 2, 3];
 
-// Subject definitions based on grade
-const SUBJECTS_BY_GRADE = {
-  "1-5": [
-    { key: "english", label: "English" },
-    { key: "sinhala", label: "Sinhala" },
-    { key: "maths", label: "Maths" },
-    { key: "science", label: "Science" },
-    { key: "religion", label: "Religion" },
-  ],
-  "6-9": [
-    { key: "english", label: "English" },
-    { key: "sinhala", label: "Sinhala" },
-    { key: "maths", label: "Maths" },
-    { key: "science", label: "Science" },
-    { key: "religious", label: "Religious" },
-    { key: "art", label: "Art" },
-    { key: "geography", label: "Geography" },
-    { key: "citizenship", label: "Citizenship" },
-    { key: "tamil", label: "Tamil" },
-    { key: "pts", label: "PTS (Physical Training)" },
-    { key: "health", label: "Health" },
-    { key: "history", label: "History" },
-  ],
-  "10-11": [
-    { key: "english", label: "English" },
-    { key: "sinhala", label: "Sinhala" },
-    { key: "maths", label: "Maths" },
-    { key: "science", label: "Science" },
-    { key: "buddhism", label: "Buddhism" },
-    { key: "history", label: "History" },
-    { key: "cat1", label: "1st Category" },
-    { key: "cat2", label: "2nd Category" },
-    { key: "cat3", label: "3rd Category" },
-  ],
-  "12": [
-    { key: "english", label: "English" },
-    { key: "sinhala", label: "Sinhala" },
-    { key: "maths", label: "Maths" },
-    { key: "subject4", label: "Subject 4" },
-  ],
-};
-
-const getSubjectsByGrade = (gradeInput) => {
-  if (gradeInput == null) return [];
-
-  // If given a number already
-  if (typeof gradeInput === "number") {
-    const gradeNum = gradeInput;
-    if (gradeNum >= 1 && gradeNum <= 5) return SUBJECTS_BY_GRADE["1-5"];
-    if (gradeNum >= 6 && gradeNum <= 9) return SUBJECTS_BY_GRADE["6-9"];
-    if (gradeNum >= 10 && gradeNum <= 11) return SUBJECTS_BY_GRADE["10-11"];
-    if (gradeNum === 12) return SUBJECTS_BY_GRADE["12"];
-    return [];
-  }
-
-  const str = String(gradeInput);
-
-  // Handle explicit ranges like "1-5" or "Grade 1-5"
-  const rangeMatch = str.match(/(\d+)\s*-\s*(\d+)/);
-  if (rangeMatch) {
-    const start = Number(rangeMatch[1]);
-    const end = Number(rangeMatch[2]);
-    if (start === 1 && end === 5) return SUBJECTS_BY_GRADE["1-5"];
-    if (start === 6 && end === 9) return SUBJECTS_BY_GRADE["6-9"];
-  }
-
-  // Extract first number from strings like "Grade 8" or "8"
-  const numMatch = str.match(/(\d+)/);
-  if (numMatch) {
-    const gradeNum = Number(numMatch[1]);
-    if (gradeNum >= 1 && gradeNum <= 5) return SUBJECTS_BY_GRADE["1-5"];
-    if (gradeNum >= 6 && gradeNum <= 9) return SUBJECTS_BY_GRADE["6-9"];
-    if (gradeNum >= 10 && gradeNum <= 11) return SUBJECTS_BY_GRADE["10-11"];
-    if (gradeNum === 12) return SUBJECTS_BY_GRADE["12"];
-  }
-
-  return [];
-};
-
 const TeacherMarksPage = () => {
-  const [studentsByGrade, setStudentsByGrade] = useState({});
+  const [assignedClass, setAssignedClass] = useState(null);
+  const [classStudents, setClassStudents] = useState([]);
+  const [marksData, setMarksData] = useState({});
+  const [predictionsByGrade, setPredictionsByGrade] = useState({});
   const [search, setSearch] = useState("");
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const role = getStoredRole() || "teacher";
+  const [role] = useState(getStoredRole() || "teacher");
+  const [predictionLoading, setPredictionLoading] = useState({});
+  const [error, setError] = useState("");
+  const [debugInfo, setDebugInfo] = useState("");
 
-  // Fetch teacher's class students and marks
-  const fetchStudentsAndMarks = async () => {
+  const getClassTeachersEndpoint = () => {
+    return API_ENDPOINTS.CLASS_TEACHERS.MY_CLASS;
+  };
+
+  const getAttendanceEndpoint = () => {
+    return API_ENDPOINTS.ATTENDANCE.TEACHER_STUDENTS;
+  };
+
+  const fetchClassData = useCallback(async (assignment) => {
+    try {
+      setDebugInfo(`Fetching data for class ${assignment.grade}-${assignment.section}...`);
+      
+      const endpoint = getAttendanceEndpoint();
+      const studentsRes = await axios.get(endpoint, { 
+        headers: getAuthHeaders(),
+        timeout: 10000
+      });
+      
+      let students = studentsRes.data.students || [];
+      
+      // Filter students to exact assigned class
+      students = students.filter(student => {
+        const studentGrade = parseInt(student.grade?.match(/\d+/)?.[0] || 0);
+        const gradeMatch = studentGrade === assignment.grade;
+        const sectionMatch = student.section === assignment.section;
+        const streamMatch = !assignment.stream || student.stream === assignment.stream;
+        return gradeMatch && sectionMatch && streamMatch;
+      });
+      
+      // Add marks to each student from marksData
+      const classGradeKey = `Grade ${assignment.grade}`;
+      const classMarks = marksData[classGradeKey]?.marks || [];
+      students = students.map(student => {
+        const studentMarkRecord = classMarks.find(m => 
+          String(m.studentId?._id || m.studentId) === String(student._id)
+        );
+        return {
+          ...student,
+          marks: studentMarkRecord?.marks || {}
+        };
+      });
+      
+      setClassStudents(students);
+
+    } catch (err) {
+      console.error("❌ Class data error:", err);
+      setError("Failed to load class data.");
+      setDebugInfo(`Error: ${err.message}`);
+    }
+  }, [selectedYear, selectedTerm, marksData]);
+
+
+  const fetchAssignedClass = async () => {
     try {
       setLoading(true);
+      setError("");
       
-      // Get students of teacher's assigned class
-      const studentsRes = await axios.get(
-        API_ENDPOINTS.ATTENDANCE.TEACHER_STUDENTS,
-        { headers: getAuthHeaders() }
-      );
-
-      const classStudents = studentsRes.data.students || [];
+      const endpoint = getClassTeachersEndpoint();
+      console.log("🔹 Using endpoint:", endpoint);
       
-      if (classStudents.length === 0) {
-        alert("No students found in your assigned class.");
-        setStudentsByGrade({});
-        setLoading(false);
-        return;
-      }
-
-      // Fetch marks from Marks API for the selected year and term
-      let marksData = {};
-      try {
-        const marksRes = await axios.get(
-          API_ENDPOINTS.MARKS.TEACHER_CLASS,
-          { 
-            headers: getAuthHeaders(),
-            params: { year: selectedYear, term: selectedTerm }
-          }
-        );
-        // marksRes.data is grouped by grade: { "Grade 1-5": { marks: [...], subjectsInfo: {...} }, ... }
-        marksData = marksRes.data || {};
-      } catch (marksErr) {
-        console.warn("Could not fetch marks from API, using student.terms:", marksErr);
-        // Fallback to student.terms if API fails
-      }
-
-      // Group students by grade and merge with marks data
-      const grouped = {};
-      classStudents.forEach((student) => {
-        // Parse grade: "Grade 8" -> 8, or "8" -> 8
-        const gradeStr = String(student.grade);
-        const match = gradeStr.match(/\d+/);
-        const gradeNum = match ? parseInt(match[0]) : 0;
-        let gradeKey;
-        
-        if (gradeNum >= 1 && gradeNum <= 5) gradeKey = "Grade 1-5";
-        else if (gradeNum >= 6 && gradeNum <= 9) gradeKey = "Grade 6-9";
-        else if (gradeNum >= 10 && gradeNum <= 11) gradeKey = "Grade 10-11";
-        else if (gradeNum === 12) gradeKey = "Grade 12";
-        else gradeKey = `Grade ${gradeNum}`;
-
-        if (!grouped[gradeKey]) {
-          grouped[gradeKey] = {
-            subjects: getSubjectsByGrade(gradeNum),
-            students: [],
-          };
-        }
-
-        // Get existing marks for this student
-        let marks = {};
-        
-        // First try to get from Marks API data
-        if (marksData[gradeKey] && marksData[gradeKey].marks) {
-          const studentMarksRecord = marksData[gradeKey].marks.find(
-            m => {
-              const recordStudentId = m.studentId?._id || m.studentId?.id || m.studentId;
-              return recordStudentId && String(recordStudentId) === String(student._id);
-            }
-          );
-          if (studentMarksRecord && studentMarksRecord.marks) {
-            marks = studentMarksRecord.marks;
-          }
-        }
-        
-        // Fallback to student.terms if no marks from API
-        if (Object.keys(marks).length === 0 && student.terms && Array.isArray(student.terms)) {
-          const termData = student.terms.find(
-            (t) => t.year === selectedYear && t.term === selectedTerm
-          );
-          if (termData && termData.marks) {
-            if (Array.isArray(termData.marks)) {
-              termData.marks.forEach((m) => {
-                marks[m.subject] = m.marks || m.mark || 0;
-              });
-            } else {
-              marks = termData.marks;
-            }
-          }
-        }
-
-        grouped[gradeKey].students.push({
-          _id: student._id,
-          name: `${student.firstName || ""} ${student.lastName || ""}`.trim(),
-          enrolment: student.enrollmentNo,
-          grade: student.grade,
-          marks: marks,
-        });
+      const headers = getAuthHeaders();
+      
+      setDebugInfo(`Fetching from: ${endpoint}`);
+      
+      const classRes = await axios.get(endpoint, { 
+        headers: headers,
+        timeout: 10000
       });
-
-      setStudentsByGrade(grouped);
+      
+      if (classRes.data.assignment) {
+        setAssignedClass(classRes.data.assignment);
+        setDebugInfo(`✅ Found class: Grade ${classRes.data.assignment.grade}, Section ${classRes.data.assignment.section}`);
+        
+        await fetchClassData(classRes.data.assignment);
+      } else {
+        setError("You are not assigned to any class. Please contact administrator.");
+        setDebugInfo("No assignment found.");
+      }
+      
     } catch (err) {
-      console.error("Error fetching students:", err);
-      setStudentsByGrade({});
-      alert(`❌ Unable to fetch students: ${err.response?.data?.message || err.message}`);
+      console.error("❌ Error fetching assigned class:", err);
+      
+      setDebugInfo(`Error: ${err.message}`);
+      
+      if (err.response?.status === 401) {
+        setError("Session expired. Please login again.");
+      } else {
+        setError(`Failed to load: ${err.response?.data?.message || err.message}`);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch students and marks when year/term changes
   useEffect(() => {
-    fetchStudentsAndMarks();
-  }, [selectedYear, selectedTerm]);
+    fetchAssignedClass();
+  }, []);
 
-  // Filter students by search across all grades
-  const filteredStudentsByGrade = useMemo(() => {
-    const filtered = {};
-    Object.entries(studentsByGrade).forEach(([grade, gradeData]) => {
-      const filteredStudents = gradeData.students.filter(
-        (s) =>
-          s.name.toLowerCase().includes(search.toLowerCase()) ||
-          s.enrolment.toLowerCase().includes(search.toLowerCase())
-      );
-      if (filteredStudents.length > 0) {
-        filtered[grade] = {
-          ...gradeData,
-          students: filteredStudents,
-        };
-      }
-    });
-    return filtered;
-  }, [studentsByGrade, search]);
-
-  // Handle mark change
-  const handleMarkChange = (grade, studentId, subject, value) => {
-    // Validate: marks must be between 0-100
-    const numValue = value ? Number(value) : 0;
-    if (numValue < 0 || numValue > 100) {
-      alert("Marks must be between 0 and 100");
-      return;
+  useEffect(() => {
+    if (assignedClass) {
+      fetchClassData(assignedClass);
     }
-    
-    setStudentsByGrade((prev) => ({
-      ...prev,
-      [grade]: {
-        ...prev[grade],
-        students: prev[grade].students.map((s) =>
-          s._id === studentId
-            ? {
-                ...s,
-                marks: {
-                  ...s.marks,
-                  [subject]: numValue,
-                },
-              }
-            : s
-        ),
-      },
-    }));
+  }, [selectedTerm, selectedYear, fetchClassData]);
+
+  const filteredStudents = useMemo(() => {
+    return classStudents.filter(s => 
+      s.name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.enrolment?.toLowerCase().includes(search.toLowerCase()) ||
+      `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [classStudents, search]);
+
+  const generateMarksPredictions = useCallback(async (classKey) => {
+    if (filteredStudents.length === 0) return;
+
+    try {
+      setPredictionLoading(prev => ({...prev, [classKey]: true}));
+      const predictions = await Promise.all(
+        filteredStudents.map(async (student) => {
+          const input = {
+            studentId: student._id,
+            year: selectedYear,
+            term: selectedTerm,
+          };
+          const res = await axios.post(API_ENDPOINTS.ML.PREDICT_MARKS, input, { headers: getAuthHeaders() });
+          return { ...student, predicted_marks: res.data };
+        })
+      );
+      setPredictionsByGrade(prev => ({
+        ...prev,
+        [classKey]: { predictions, timestamp: new Date().toLocaleString() }
+      }));
+    } catch (err) {
+      console.error('Marks prediction error:', err);
+      alert('ML service error: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setPredictionLoading(prev => ({...prev, [classKey]: false}));
+    }
+  }, [filteredStudents, selectedYear, selectedTerm]);
+
+  const generateDropoutRisk = useCallback(async (classKey) => {
+    if (filteredStudents.length === 0) return;
+
+    try {
+      setPredictionLoading(prev => ({...prev, [classKey]: true}));
+      const predictions = await Promise.all(
+        filteredStudents.map(async (student) => {
+          const input = {
+            studentId: student._id,
+            year: selectedYear,
+            term: selectedTerm,
+          };
+          const res = await axios.post(API_ENDPOINTS.ML.PREDICT_DROPOUT, input, { headers: getAuthHeaders() });
+          return { ...student, dropout_risk: res.data };
+        })
+      );
+      setPredictionsByGrade(prev => ({
+        ...prev,
+        [classKey]: { ...prev[classKey], dropout: predictions, dropout_timestamp: new Date().toLocaleString() }
+      }));
+    } catch (err) {
+      console.error('Dropout prediction error:', err);
+      alert('ML Dropout service error: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setPredictionLoading(prev => ({...prev, [classKey]: false}));
+    }
+  }, [filteredStudents, selectedYear, selectedTerm]);
+
+  const updateMark = (studentId, subject, value) => {
+    setClassStudents(prev => 
+      prev.map(s => 
+        s._id === studentId 
+          ? { ...s, marks: { ...s.marks, [subject]: Number(value) || 0 } }
+          : s
+      )
+    );
   };
 
-  // Calculate rank and totals for students
-  const rankedStudents = (students, subjects) => {
-    const withTotals = students.map((s) => {
-      const markValues = subjects
-        .map((subj) => s.marks[subj.key] || 0)
-        .filter((m) => m > 0);
-      const total = markValues.reduce((a, b) => a + b, 0);
-      const avg = markValues.length ? (total / markValues.length).toFixed(2) : 0;
-      return { ...s, total, avg: Number(avg) };
-    });
-
-    // Rank by total (descending)
-    withTotals.sort((a, b) => b.total - a.total);
-    return withTotals.map((s, i) => ({ ...s, place: i + 1 }));
-  };
-
-  // Save marks to database
-  const saveMarks = async () => {
+  const saveAllMarks = async () => {
     try {
       setSaving(true);
-      const savePromises = [];
-
-      Object.values(studentsByGrade).forEach((gradeData) => {
-        gradeData.students.forEach((student) => {
-          if (Object.keys(student.marks).length > 0) {
-            savePromises.push(
-              axios.post(
-                API_ENDPOINTS.MARKS.UPSERT,
-                {
-                  studentId: student._id,
-                  year: selectedYear,
-                  term: selectedTerm,
-                  marks: student.marks,
-                },
-                { headers: getAuthHeaders() }
-              )
-            );
-          }
-        });
-      });
-
-      if (savePromises.length === 0) {
-        alert("⚠️ No marks to save!");
-        setSaving(false);
+      const updates = filteredStudents
+        .filter(s => Object.keys(s.marks || {}).length > 0)
+        .map(student => ({
+          studentId: student._id,
+          year: selectedYear,
+          term: selectedTerm,
+          marks: student.marks || {}
+        }));
+      
+      if (updates.length === 0) {
+        alert('No marks to save');
         return;
       }
-
-      await Promise.all(savePromises);
-      alert("✅ All marks saved successfully to database!");
       
-      // Refresh the data to show saved marks
-      await fetchStudentsAndMarks();
+      await axios.post(API_ENDPOINTS.MARKS.BULK_UPSERT, { updates }, { headers: getAuthHeaders() });
+      alert('✅ Marks saved successfully!');
     } catch (err) {
-      console.error("Error saving marks:", err);
-      alert("❌ Failed to save marks. " + (err.response?.data?.message || err.message));
+      alert('Save failed: ' + (err.response?.data?.message || err.message));
     } finally {
       setSaving(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <Sidebar role={role} />
+        <main className={styles.main}>
+          <Header title="Marks Management & ML Predictions" />
+          <div style={{padding: '2rem', textAlign: 'center', fontSize: '1.2rem'}}>
+            Loading your assigned class...
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const classKey = assignedClass ? `Grade ${assignedClass.grade}-${assignedClass.section}` : '';
+
   return (
-    <div className={styles.dashboard}>
+    <div className={styles.container}>
       <Sidebar role={role} />
       <main className={styles.main}>
-        <Header />
-        <h1 className={styles.pageTitle}>Manage Marks</h1>
-        <p className={styles.pageSubtitle}>
-          Add, edit, and review student marks by grade and term
-        </p>
+        <Header title="Marks Management & ML Predictions" />
 
-        {/* Filters */}
-        <div className={styles.filters}>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-          >
-            <option value={currentYear}>{currentYear}</option>
-            <option value={currentYear - 1}>{currentYear - 1}</option>
-            <option value={currentYear - 2}>{currentYear - 2}</option>
-          </select>
-
-          <select
-            value={selectedTerm}
-            onChange={(e) => setSelectedTerm(Number(e.target.value))}
-          >
-            {terms.map((t) => (
-              <option key={t} value={t}>
-                Term {t}
-              </option>
-            ))}
-          </select>
-
-          <input
-            type="text"
-            placeholder="Search by name or enrolment..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        {loading ? (
-          <div className={styles.loadingContainer}>
-            <p>Loading students...</p>
+        {error && (
+          <div className={styles.error}>
+            <h3>⚠️ {error}</h3>
+            {debugInfo && (
+              <details>
+                <summary>Debug Info</summary>
+                <pre>{debugInfo}</pre>
+              </details>
+            )}
           </div>
-        ) : Object.keys(filteredStudentsByGrade).length === 0 ? (
-          <div className={styles.loadingContainer}>
-            <p>No students found. You may not be assigned to any classes.</p>
+        )}
+
+        {assignedClass && (
+          <div className={styles.classInfo}>
+            <h2>Class: Grade {assignedClass.grade} - {assignedClass.section}{assignedClass.stream ? ` (${assignedClass.stream})` : ""}</h2>
           </div>
-        ) : (
+        )}
+
+        {assignedClass && classStudents.length === 0 && !loading && (
+          <div style={{padding: '2rem', textAlign: 'center', color: '#666'}}>
+            <h3>No students in this class yet</h3>
+          </div>
+        )}
+
+        {assignedClass && classStudents.length > 0 && (
           <>
-            {/* Marks Tables by Grade */}
-            {Object.entries(filteredStudentsByGrade).map(([grade, gradeData]) => {
-              const ranked = rankedStudents(gradeData.students, gradeData.subjects);
-
-              return (
-                <div key={grade} className={styles.gradeSection}>
-                  <div className={styles.tableHeader}>
-                    <h3>
-                      Grade {grade} — Term {selectedTerm}, {selectedYear}
-                    </h3>
-                    <span className={styles.studentCount}>
-                      {ranked.length} students
-                    </span>
-                  </div>
-
-                  <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Enrolment</th>
-                          <th>Name</th>
-                          {gradeData.subjects.map((subj) => (
-                            <th key={subj.key}>{subj.label}</th>
-                          ))}
-                          <th>Total</th>
-                          <th>Average</th>
-                          <th>Rank</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ranked.length === 0 ? (
-                          <tr>
-                            <td colSpan={gradeData.subjects.length + 4}>
-                              No students in this grade
-                            </td>
-                          </tr>
-                        ) : (
-                          ranked.map((student) => (
-                            <tr key={student._id}>
-                              <td>{student.enrolment}</td>
-                              <td>{student.name}</td>
-                              {gradeData.subjects.map((subj) => (
-                                <td key={subj.key}>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={student.marks[subj.key] || ""}
-                                    onChange={(e) =>
-                                      handleMarkChange(
-                                        grade,
-                                        student._id,
-                                        subj.key,
-                                        e.target.value
-                                      )
-                                    }
-                                    className={styles.markInput}
-                                    placeholder="0"
-                                  />
-                                </td>
-                              ))}
-                              <td
-                                className={
-                                  student.total >= 300
-                                    ? styles.highScore
-                                    : styles.normalScore
-                                }
-                              >
-                                {student.total}
-                              </td>
-                              <td
-                                className={
-                                  student.avg >= 75
-                                    ? styles.excellent
-                                    : student.avg >= 60
-                                    ? styles.good
-                                    : styles.needsImprovement
-                                }
-                              >
-                                {student.avg}
-                              </td>
-                              <td className={styles.placeCell}>
-                                <span
-                                  className={
-                                    student.place === 1
-                                      ? styles.firstPlace
-                                      : student.place === 2
-                                      ? styles.secondPlace
-                                      : student.place === 3
-                                      ? styles.thirdPlace
-                                      : styles.otherPlace
-                                  }
-                                >
-                                  {student.place}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Grade Summary */}
-                  {ranked.length > 0 && (
-                    <div className={styles.gradeSummary}>
-                      <span>
-                        Grade Average:{" "}
-                        <strong>
-                          {(ranked.reduce((sum, s) => sum + s.avg, 0) / ranked.length).toFixed(2)}
-                        </strong>
-                      </span>
-                      <span>
-                        Top Student: <strong>{ranked[0].name}</strong>
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Save Button */}
-            <div className={styles.actions}>
-              <button
-                className={styles.saveBtn}
-                onClick={saveMarks}
-                disabled={saving || Object.keys(studentsByGrade).length === 0}
-              >
-                {saving ? "💾 Saving..." : "💾 Save All Marks to Database"}
+            <div className={styles.filters}>
+              <select value={selectedTerm} onChange={e => setSelectedTerm(Number(e.target.value))}>
+                {terms.map(t => <option key={t}>Term {t}</option>)}
+              </select>
+              <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
+                <option>{currentYear - 2}</option>
+                <option>{currentYear - 1}</option>
+                <option>{currentYear}</option>
+              </select>
+              <input 
+                placeholder="Search students in class..." 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+              />
+              <button onClick={saveAllMarks} disabled={saving}>
+                {saving ? 'Saving...' : `Save ${filteredStudents.length} Marks`}
               </button>
+            </div>
+
+            <div className={styles.gradeSection}>
+              <div className={styles.gradeHeader}>
+                <h2>{classKey} ({filteredStudents.length}/{classStudents.length} students)
+                  <span className={styles.sectionLabel}>
+                    Section {assignedClass.section}
+                  </span>
+                </h2>
+                <div>
+                  <button 
+                    onClick={() => generateMarksPredictions(classKey)} 
+                    className={styles.mlBtn} 
+                    disabled={predictionLoading[classKey]}
+                  >
+                    {predictionLoading[classKey] ? 'Predicting...' : '🔮 Predict Marks'}
+                  </button>
+                  <button 
+                    onClick={() => generateDropoutRisk(classKey)} 
+                    className={styles.mlBtn} 
+                    disabled={predictionLoading[classKey]}
+                  >
+                    {predictionLoading[classKey] ? 'Analyzing...' : '⚠️ Risk Analysis'}
+                  </button>
+                </div>
+              </div>
+
+              <table className={styles.marksTable}>
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>English</th>
+                    <th>Sinhala</th>
+                    <th>Maths</th>
+                    <th>Science</th>
+                    <th>Tamil</th>
+                    <th>Religion</th>
+                    <th>Avg</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.map(student => {
+                    const marks = marksData[`Grade ${assignedClass.grade}`]?.marks?.find(m => 
+                      String(m.studentId?._id || m.studentId) === String(student._id)
+                    )?.marks || student.marks || {};
+                    
+                    const avg = Object.values(marks).reduce((sum, v) => sum + (Number(v) || 0), 0) / 
+                              Math.max(Object.keys(marks).length, 1);
+
+                    return (
+                      <tr key={student._id}>
+                        <td>{`${student.firstName || ''} ${student.lastName || ''}`.trim()} 
+                          <small>({student.enrolment || student.enrollmentNo})</small>
+                        </td>
+                        <td>
+                          <input 
+                            type="number" 
+                            value={marks.english || ''} 
+                            onChange={e => updateMark(student._id, 'english', e.target.value)} 
+                            min="0" max="100"
+                          />
+                        </td>
+                        <td>
+                          <input 
+                            type="number" 
+                            value={marks.sinhala || ''} 
+                            onChange={e => updateMark(student._id, 'sinhala', e.target.value)} 
+                            min="0" max="100"
+                          />
+                        </td>
+                        <td>
+                          <input 
+                            type="number" 
+                            value={marks.maths || ''} 
+                            onChange={e => updateMark(student._id, 'maths', e.target.value)} 
+                            min="0" max="100"
+                          />
+                        </td>
+                        <td>
+                          <input 
+                            type="number" 
+                            value={marks.science || ''} 
+                            onChange={e => updateMark(student._id, 'science', e.target.value)} 
+                            min="0" max="100"
+                          />
+                        </td>
+                        <td>
+                          <input 
+                            type="number" 
+                            value={marks.tamil || ''} 
+                            onChange={e => updateMark(student._id, 'tamil', e.target.value)} 
+                            min="0" max="100"
+                          />
+                        </td>
+                        <td>
+                          <input 
+                            type="number" 
+                            value={marks.religion || ''} 
+                            onChange={e => updateMark(student._id, 'religion', e.target.value)} 
+                            min="0" max="100"
+                          />
+                        </td>
+                        <td style={{fontWeight: 'bold', color: avg > 70 ? 'green' : avg > 50 ? 'orange' : 'red'}}>
+                          {Math.round(avg)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {predictionsByGrade[classKey]?.predictions && (
+                <div className={styles.predictionsTable}>
+                  <h3>🔮 Marks Predictions (Top 10)</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>English</th>
+                        <th>Math</th>
+                        <th>Sinhala</th>
+                        <th>Trend</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {predictionsByGrade[classKey].predictions.slice(0, 10).map(p => {
+                        const eng = p.predicted_marks?.english;
+                        const math = p.predicted_marks?.maths;
+                        const sin = p.predicted_marks?.sinhala;
+                        return (
+                          <tr key={p._id}>
+                            <td>{p.name || `${p.firstName} ${p.lastName}`}</td>
+                            <td>{eng?.predicted?.toFixed(0)} ({eng?.confidence || 'N/A'})</td>
+                            <td>{math?.predicted?.toFixed(0)}</td>
+                            <td>{sin?.predicted?.toFixed(0)}</td>
+                            <td>📈</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {predictionsByGrade[classKey]?.dropout && (
+                <div className={styles.dropoutTable}>
+                  <h3>⚠️ Dropout Risk Analysis (Top 10)</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Risk</th>
+                        <th>Score</th>
+                        <th>Key Factors</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {predictionsByGrade[classKey].dropout.slice(0, 10).map(p => (
+                        <tr key={p._id}>
+                          <td>{p.name || `${p.firstName} ${p.lastName}`}</td>
+                          <td>{p.dropout_risk?.risk_level || 'N/A'}</td>
+                          <td>{((p.dropout_risk?.risk_score || 0) * 100).toFixed(0)}%</td>
+                          <td>{(p.dropout_risk?.factors || []).slice(0,3).join(', ') || 'N/A'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -508,3 +482,4 @@ const TeacherMarksPage = () => {
 };
 
 export default TeacherMarksPage;
+

@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import Sidebar from "../../Components/Sidebar/Sidebar";
-import Header from "../../Components/Header/Header";
+import StudentLayout from "../../Components/StudentLayout/StudentLayout";
 import styles from "./AttendancePage.module.css";
 import { getStoredRole } from "../../utils/auth";
 import axios from "axios";
@@ -154,126 +153,121 @@ const AttendancePage = () => {
   const chartData = buildChartData();
 
   return (
-    <div className={styles.page}>
-      <Sidebar role={role} />
-      <main className={styles.main}>
-        <Header title="Attendance" />
-
-        <div className={styles.top}>
-          <div className={styles.overallCard}>
-            <div className={styles.title}>Overall Attendance</div>
-            <div className={styles.value}>{overall}%</div>
-            <div className={styles.small}>
-              {attendance.length > 0 
-                ? `${attendance.filter(a => a.status === "P" && !isHoliday(a.date)).length} / ${attendance.filter(a => !isHoliday(a.date)).length} days`
-                : "No records"}
-            </div>
-          </div>
-
-          <div className={styles.controls}>
-            <label>
-              <input
-                type="radio"
-                checked={range === "week"}
-                onChange={() => setRange("week")}
-              />{" "}
-              Week
-            </label>
-            <label>
-              <input
-                type="radio"
-                checked={range === "month"}
-                onChange={() => setRange("month")}
-              />{" "}
-              Month
-            </label>
+    <StudentLayout title="Attendance" role={role}>
+      <div className={styles.top}>
+        <div className={styles.overallCard}>
+          <div className={styles.title}>Overall Attendance</div>
+          <div className={styles.value}>{overall}%</div>
+          <div className={styles.small}>
+            {attendance.length > 0 
+              ? `${attendance.filter(a => a.status === "P" && !isHoliday(a.date)).length} / ${attendance.filter(a => !isHoliday(a.date)).length} days`
+              : "No records"}
           </div>
         </div>
 
-        {chartData.length > 0 && (
-          <div className={styles.chartCard}>
-            <h4>Attendance Trend {range === "week" ? "(Last 7 Days)" : "(Monthly)"}</h4>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey={range === "week" ? "day" : "month"} />
-                <YAxis domain={[0, 100]} />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="percent"
-                  stroke="url(#colorLine)"
-                  strokeWidth={3}
-                  dot={{ r: 5 }}
-                />
-                <defs>
-                  <linearGradient id="colorLine" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#2563eb" />
-                    <stop offset="100%" stopColor="#16a34a" />
-                  </linearGradient>
-                </defs>
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        <div className={styles.daily}>
-          <div className={styles.dailyHeader}>
-            <h4>Attendance Records</h4>
+        <div className={styles.controls}>
+          <label>
             <input
-              type="date"
-              value={searchDate}
-              onChange={(e) => setSearchDate(e.target.value)}
-              className={styles.searchDate}
-            />
-          </div>
-
-          {loading && !attendance.length ? (
-            <p className={styles.noData}>Loading attendance records...</p>
-          ) : filteredDaily.length > 0 ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDaily.map((record, i) => {
-                  const holiday = isHoliday(record.date);
-                  const schoolDayRecord = schoolDays.find(sd => sd.date === record.date);
-                  
-                  return (
-                    <tr key={i} className={holiday ? styles.holidayRow : ""}>
-                      <td>{new Date(record.date).toLocaleDateString()}</td>
-                      <td
-                        className={
-                          record.status === "A"
-                            ? styles.absent
-                            : record.status === "L"
-                            ? styles.late
-                            : styles.present
-                        }
-                      >
-                        {record.status === "P" ? "Present" : record.status === "A" ? "Absent" : "Late"}
-                      </td>
-                      <td className={holiday ? styles.holidayText : ""}>
-                        {holiday ? `Holiday (${schoolDayRecord?.description || "Closed"})` : "School Day"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <p className={styles.noData}>
-              {searchDate ? "No records found for this date" : "No attendance records yet"}
-            </p>
-          )}
+              type="radio"
+              checked={range === "week"}
+              onChange={() => setRange("week")}
+            />{" "}
+            Week
+          </label>
+          <label>
+            <input
+              type="radio"
+              checked={range === "month"}
+              onChange={() => setRange("month")}
+            />{" "}
+            Month
+          </label>
         </div>
-      </main>
-    </div>
+      </div>
+
+      {chartData.length > 0 && (
+        <div className={styles.chartCard}>
+          <h4>Attendance Trend {range === "week" ? "(Last 7 Days)" : "(Monthly)"}</h4>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey={range === "week" ? "day" : "month"} />
+              <YAxis domain={[0, 100]} />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="percent"
+                stroke="url(#colorLine)"
+                strokeWidth={3}
+                dot={{ r: 5 }}
+              />
+              <defs>
+                <linearGradient id="colorLine" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#2563eb" />
+                  <stop offset="100%" stopColor="#16a34a" />
+                </linearGradient>
+              </defs>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      <div className={styles.daily}>
+        <div className={styles.dailyHeader}>
+          <h4>Attendance Records</h4>
+          <input
+            type="date"
+            value={searchDate}
+            onChange={(e) => setSearchDate(e.target.value)}
+            className={styles.searchDate}
+          />
+        </div>
+
+        {loading && !attendance.length ? (
+          <p className={styles.noData}>Loading attendance records...</p>
+        ) : filteredDaily.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDaily.map((record, i) => {
+                const holiday = isHoliday(record.date);
+                const schoolDayRecord = schoolDays.find(sd => sd.date === record.date);
+                
+                return (
+                  <tr key={i} className={holiday ? styles.holidayRow : ""}>
+                    <td>{new Date(record.date).toLocaleDateString()}</td>
+                    <td
+                      className={
+                        record.status === "A"
+                          ? styles.absent
+                          : record.status === "L"
+                          ? styles.late
+                          : styles.present
+                      }
+                    >
+                      {record.status === "P" ? "Present" : record.status === "A" ? "Absent" : "Late"}
+                    </td>
+                    <td className={holiday ? styles.holidayText : ""}>
+                      {holiday ? `Holiday (${schoolDayRecord?.description || "Closed"})` : "School Day"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <p className={styles.noData}>
+            {searchDate ? "No records found for this date" : "No attendance records yet"}
+          </p>
+        )}
+      </div>
+    </StudentLayout>
   );
 };
 

@@ -39,6 +39,7 @@ export const API_ENDPOINTS = {
   MARKS: {
     BASE: `${API_BASE_URL}/marks`,
     UPSERT: `${API_BASE_URL}/marks/upsert`,
+    BULK_UPSERT: `${API_BASE_URL}/marks/bulk-upsert`,
     STUDENT: `${API_BASE_URL}/marks/student`,
     TEACHER_CLASS: `${API_BASE_URL}/marks/teacher-class`,
     ALL: `${API_BASE_URL}/marks/all`,
@@ -47,6 +48,9 @@ export const API_ENDPOINTS = {
   TIMETABLE: {
     BASE: `${API_BASE_URL}/timetable`,
     GENERATE: `${API_BASE_URL}/timetable/generate`,
+    GENERATE_PRIMARY_ALL: `${API_BASE_URL}/timetable/generate-grade1-5-all`,
+    GENERATE_MIDDLE_6_9: `${API_BASE_URL}/timetable/generate-grade6-9`,
+    GENERATE_MIDDLE_ALL: `${API_BASE_URL}/timetable/generate-grade6-9-all`,
     SUGGESTIONS: `${API_BASE_URL}/timetable/suggestions`,
     GET: `${API_BASE_URL}/timetable/class`,
     CLASS: `${API_BASE_URL}/timetable/class`,
@@ -60,14 +64,20 @@ export const API_ENDPOINTS = {
     BASE: `${API_BASE_URL}/school-days`,
     BY_DATE: (date) => `${API_BASE_URL}/school-days/${date}`,
     BULK: `${API_BASE_URL}/school-days/bulk`,
+    AUTO_GENERATE: `${API_BASE_URL}/school-days/auto-generate`,
   },
   NOTICES: {
     BASE: `${API_BASE_URL}/notices`,
     BY_ID: (id) => `${API_BASE_URL}/notices/${id}`,
+    STATS: `${API_BASE_URL}/notices/stats`,
+    MARK_READ: (id) => `${API_BASE_URL}/notices/${id}/read`,
+    BULK_UPDATE: `${API_BASE_URL}/notices/bulk`,
   },
   ML: {
     PREDICT_MARKS: `${API_BASE_URL}/ml/predict-marks`,
+    PREDICT_TERM_MARKS: `${API_BASE_URL}/ml/predict-term-marks`,
     PREDICT_DROPOUT: `${API_BASE_URL}/ml/predict-dropout`,
+    PREDICT_DROPOUT_CLASS: `${API_BASE_URL}/ml/predict-dropout/class`,
   },
 };
 export const getAuthToken = () => {

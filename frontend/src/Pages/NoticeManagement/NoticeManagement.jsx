@@ -13,8 +13,12 @@ const NoticeManagement = () => {
   const [newNotice, setNewNotice] = useState({
     title: "",
     description: "",
+    category: "general",
+    tags: "",
     priority: "medium",
     targetAudience: ["all"],
+    expiresAt: "",
+    isPinned: false,
   });
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -32,7 +36,7 @@ const NoticeManagement = () => {
       const res = await axios.get(API_ENDPOINTS.NOTICES.BASE, {
         headers: getAuthHeaders(),
       });
-      setNotices(res.data);
+      setNotices(res.data.notices || []);
     } catch (error) {
       console.error("Error fetching notices:", error);
     } finally {
@@ -71,8 +75,12 @@ const NoticeManagement = () => {
       const formData = new FormData();
       formData.append("title", newNotice.title);
       formData.append("description", newNotice.description);
+      formData.append("category", newNotice.category);
+      formData.append("tags", JSON.stringify(newNotice.tags ? newNotice.tags.split(',').map(tag => tag.trim()) : []));
       formData.append("priority", newNotice.priority);
       formData.append("targetAudience", JSON.stringify(newNotice.targetAudience));
+      formData.append("expiresAt", newNotice.expiresAt || "");
+      formData.append("isPinned", newNotice.isPinned.toString());
 
       if (selectedImage) {
         formData.append("image", selectedImage);
@@ -89,7 +97,16 @@ const NoticeManagement = () => {
       });
 
       alert("✅ Notice added successfully!");
-      setNewNotice({ title: "", description: "", priority: "medium", targetAudience: ["all"] });
+      setNewNotice({
+        title: "",
+        description: "",
+        category: "general",
+        tags: "",
+        priority: "medium",
+        targetAudience: ["all"],
+        expiresAt: "",
+        isPinned: false,
+      });
       setSelectedImage(null);
       setImagePreview(null);
       fetchNotices();
@@ -119,8 +136,12 @@ const NoticeManagement = () => {
     setNewNotice({
       title: notice.title,
       description: notice.description || "",
+      category: notice.category || "general",
+      tags: notice.tags ? notice.tags.join(', ') : "",
       priority: notice.priority || "medium",
       targetAudience: notice.targetAudience || ["all"],
+      expiresAt: notice.expiresAt ? new Date(notice.expiresAt).toISOString().split('T')[0] : "",
+      isPinned: notice.isPinned || false,
     });
     if (notice.imageUrl) {
       setImagePreview(notice.imageUrl);
@@ -137,8 +158,12 @@ const NoticeManagement = () => {
       const formData = new FormData();
       formData.append("title", newNotice.title);
       formData.append("description", newNotice.description);
+      formData.append("category", newNotice.category);
+      formData.append("tags", JSON.stringify(newNotice.tags ? newNotice.tags.split(',').map(tag => tag.trim()) : []));
       formData.append("priority", newNotice.priority);
       formData.append("targetAudience", JSON.stringify(newNotice.targetAudience));
+      formData.append("expiresAt", newNotice.expiresAt || "");
+      formData.append("isPinned", newNotice.isPinned.toString());
 
       if (selectedImage) {
         formData.append("image", selectedImage);
@@ -155,7 +180,16 @@ const NoticeManagement = () => {
 
       alert("✅ Notice updated successfully!");
       setEditingNotice(null);
-      setNewNotice({ title: "", description: "", priority: "medium", targetAudience: ["all"] });
+      setNewNotice({
+        title: "",
+        description: "",
+        category: "general",
+        tags: "",
+        priority: "medium",
+        targetAudience: ["all"],
+        expiresAt: "",
+        isPinned: false,
+      });
       setSelectedImage(null);
       setImagePreview(null);
       fetchNotices();
@@ -167,7 +201,16 @@ const NoticeManagement = () => {
 
   const cancelEdit = () => {
     setEditingNotice(null);
-    setNewNotice({ title: "", description: "", priority: "medium", targetAudience: ["all"] });
+    setNewNotice({
+      title: "",
+      description: "",
+      category: "general",
+      tags: "",
+      priority: "medium",
+      targetAudience: ["all"],
+      expiresAt: "",
+      isPinned: false,
+    });
     setSelectedImage(null);
     setImagePreview(null);
   };
@@ -209,6 +252,24 @@ const NoticeManagement = () => {
               </div>
 
               <div className={styles.formGroup}>
+                <label>Category</label>
+                <select
+                  value={newNotice.category}
+                  onChange={(e) =>
+                    setNewNotice({ ...newNotice, category: e.target.value })
+                  }
+                >
+                  <option value="general">General</option>
+                  <option value="academic">Academic</option>
+                  <option value="administrative">Administrative</option>
+                  <option value="events">Events</option>
+                  <option value="holidays">Holidays</option>
+                  <option value="examinations">Examinations</option>
+                  <option value="sports">Sports</option>
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
                 <label>Priority</label>
                 <select
                   value={newNotice.priority}
@@ -219,6 +280,7 @@ const NoticeManagement = () => {
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
                 </select>
               </div>
 
@@ -233,10 +295,34 @@ const NoticeManagement = () => {
                     })
                   }
                 >
-                  <option value="all">All (Teachers & Students)</option>
+                  <option value="all">All (Teachers & Students & Parents)</option>
                   <option value="students">Students Only</option>
                   <option value="teachers">Teachers Only</option>
+                  <option value="parents">Parents Only</option>
                 </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Tags (comma separated)</label>
+                <input
+                  type="text"
+                  placeholder="e.g., important, urgent, event"
+                  value={newNotice.tags}
+                  onChange={(e) =>
+                    setNewNotice({ ...newNotice, tags: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Expiration Date</label>
+                <input
+                  type="date"
+                  value={newNotice.expiresAt}
+                  onChange={(e) =>
+                    setNewNotice({ ...newNotice, expiresAt: e.target.value })
+                  }
+                />
               </div>
 
               <div className={`${styles.formGroup} ${styles.fullWidth}`}>
@@ -249,6 +335,19 @@ const NoticeManagement = () => {
                   }
                   rows="4"
                 />
+              </div>
+
+              <div className={`${styles.formGroup} ${styles.checkboxGroup}`}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={newNotice.isPinned}
+                    onChange={(e) =>
+                      setNewNotice({ ...newNotice, isPinned: e.target.checked })
+                    }
+                  />
+                  <span>Pin this notice (always show at top)</span>
+                </label>
               </div>
 
               <div className={`${styles.formGroup} ${styles.fullWidth}`}>

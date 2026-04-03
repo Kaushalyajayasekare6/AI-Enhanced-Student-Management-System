@@ -5,6 +5,9 @@ import {
   createNotice,
   updateNotice,
   deleteNotice,
+  markNoticeAsRead,
+  getNoticeStats,
+  bulkUpdateNotices,
   upload,
 } from "../controllers/noticeController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -26,11 +29,14 @@ const uploadMiddleware = (req, res, next) => {
 
 // Public routes (for viewing notices)
 router.get("/", getNotices);
+router.get("/stats", protect, getNoticeStats);
 router.get("/:id", getNoticeById);
 
 // Protected routes (admin only for create/update/delete)
 router.post("/", protect, uploadMiddleware, createNotice);
+router.put("/bulk", protect, bulkUpdateNotices);
 router.put("/:id", protect, uploadMiddleware, updateNotice);
+router.put("/:id/read", protect, markNoticeAsRead);
 router.delete("/:id", protect, deleteNotice);
 
 export default router;

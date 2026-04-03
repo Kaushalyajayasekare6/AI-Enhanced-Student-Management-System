@@ -1,11 +1,14 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import styles from "./Sidebar.module.css";
 import { getStoredRole, clearAuth } from "../../utils/auth";
+import { useLayout } from "../../contexts/LayoutContext";
 
-const Sidebar = ({ role }) => {
+const Sidebar = ({ role, isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isMobile } = useLayout();
+  const showSidebar = typeof isOpen !== 'undefined' ? isOpen : true;
 
   // ✅ Get role from localStorage (stored during login)
   const storedRole = getStoredRole();
@@ -65,6 +68,7 @@ const Sidebar = ({ role }) => {
         role: userRole,
       },
     });
+    handleNavClick();
   };
 
   const handleLogout = () => {
@@ -74,8 +78,31 @@ const Sidebar = ({ role }) => {
 
   const username = localStorage.getItem("username") || "";
 
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && showSidebar && isMobile && onClose) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [showSidebar, isMobile, onClose]);
+
+  const handleNavClick = () => {
+    if (isMobile && showSidebar && onClose) {
+      onClose();
+    }
+  };
+
+  const handleLogoutClick = () => {
+    handleLogout();
+    if (isMobile && showSidebar && onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} ${showSidebar && isMobile ? styles.mobileOpen : ''}`}>
       <div className={styles.brand}>
         <div className={styles.logo}>My School</div>
         <div className={styles.role}>
@@ -95,10 +122,7 @@ const Sidebar = ({ role }) => {
                   ? styles.active 
                   : ""
               }`}
-              onClick={(e) => {
-                e.preventDefault();
-                handleNavigation(item.path);
-              }}
+              onClick={handleNavClick}
             >
               <span className={styles.icon}>{item.icon}</span>
               <span>{item.label}</span>
@@ -112,10 +136,7 @@ const Sidebar = ({ role }) => {
                     className={`${styles.submenuBtn} ${
                       location.pathname === subItem.path ? styles.active : ""
                     }`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleNavigation(subItem.path);
-                    }}
+                    onClick={handleNavClick}
                   >
                     {subItem.label}
                   </Link>
@@ -127,7 +148,7 @@ const Sidebar = ({ role }) => {
       </nav>
 
       <div className={styles.footer}>
-        <button className={styles.logoutBtn} onClick={handleLogout}>
+        <button className={styles.logoutBtn} onClick={handleLogoutClick}>
           <span className={styles.icon}>🚪</span>
           <span>Logout</span>
         </button>

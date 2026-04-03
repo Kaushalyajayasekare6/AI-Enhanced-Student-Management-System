@@ -14,9 +14,9 @@
 .container {
   background: white;
   border-radius: 24px;
-  padding: 40px;
+  padding: 32px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  max-width: 1200px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
@@ -42,15 +42,38 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 30px;
-  padding: 20px 30px;
+  padding: 14px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 16px;
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
 }
 
+.regenerateButton {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+}
+
+.regenerateButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+
+.regenerateButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .navArrow {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.3);
@@ -78,14 +101,14 @@
 }
 
 .monthTitle {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   margin: 0;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .yearTitle {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 400;
   opacity: 0.9;
   display: block;
@@ -108,10 +131,10 @@
 }
 
 .weekDay {
-  padding: 16px 8px;
+  padding: 12px 6px;
   text-align: center;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -127,9 +150,9 @@
 }
 
 .dayCell {
-  min-height: 100px;
+  min-height: 85px;
   border-right: 1px solid #f1f5f9;
-  padding: 12px 8px;
+  padding: 10px 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -182,7 +205,7 @@
 }
 
 .dayNumber {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #1a202c;
   line-height: 1;
@@ -210,7 +233,7 @@
 }
 
 .dayStatus {
-  font-size: 20px;
+  font-size: 16px;
   text-align: center;
   margin-top: auto;
   font-weight: 600;
@@ -280,6 +303,13 @@
   padding: 60px;
   color: #64748b;
   font-size: 16px;
+}
+
+.generateMessage {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #334155;
 }
 
 /* Modal Styles */

@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from "react";
-import Sidebar from "../../Components/Sidebar/Sidebar";
-import Header from "../../Components/Header/Header";
+import AdminLayout from "../../Components/AdminLayout/AdminLayout";
 import styles from "./AdminReportsPage.module.css";
-import { getStoredRole } from "../../utils/auth";
 import axios from "axios";
 import { API_ENDPOINTS, getAuthHeaders } from "../../config/api";
 import jsPDF from "jspdf";
 
 const AdminReportsPage = () => {
-  const role = getStoredRole() || "admin";
-  const [students, setStudents] = useState([]);
+  const [students, setStudents] = useState([]); 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentReport, setStudentReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -253,207 +250,203 @@ const AdminReportsPage = () => {
   const uniqueSections = [...new Set(students.map(s => s.section).filter(Boolean))].sort();
 
   return (
-    <div className={styles.dashboard}>
-      <Sidebar role={role} />
-      <main className={styles.main}>
-        <Header />
-        <div className={styles.pageHeader}>
-          <div>
-            <h1 className={styles.pageTitle}>Student Reports</h1>
-            <p className={styles.pageSubtitle}>
-              View comprehensive reports for each student including attendance, marks, and parent information
-            </p>
-          </div>
-          <button 
-            onClick={handleAutoUpdateClasses} 
-            className={styles.updateClassesBtn}
-            disabled={updatingClasses}
-          >
-            {updatingClasses ? "⏳ Updating..." : "🔄 Auto-Update Classes"}
-          </button>
+    <AdminLayout title="Student Reports" role="admin">
+      <div className={styles.pageHeader}>
+        <div>
+          <h1 className={styles.pageTitle}>Student Reports</h1>
+          <p className={styles.pageSubtitle}>
+            View comprehensive reports for each student including attendance, marks, and parent information
+          </p>
         </div>
+        <button 
+          onClick={handleAutoUpdateClasses} 
+          className={styles.updateClassesBtn}
+          disabled={updatingClasses}
+        >
+          {updatingClasses ? "⏳ Updating..." : "🔄 Auto-Update Classes"}
+        </button>
+      </div>
 
-        {/* Filters */}
-        <div className={styles.filters}>
-          <input
-            type="text"
-            placeholder="Search by name or enrollment number..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className={styles.searchInput}
-          />
-          <select
-            value={filterGrade}
-            onChange={(e) => setFilterGrade(e.target.value)}
-            className={styles.filterSelect}
-          >
-            <option value="">All Grades</option>
-            {uniqueGrades.map((grade) => (
-              <option key={grade} value={grade}>
-                {grade}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filterSection}
-            onChange={(e) => setFilterSection(e.target.value)}
-            className={styles.filterSelect}
-          >
-            <option value="">All Sections</option>
-            {uniqueSections.map((section) => (
-              <option key={section} value={section}>
-                Section {section}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Filters */}
+      <div className={styles.filters}>
+        <input
+          type="text"
+          placeholder="Search by name or enrollment number..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className={styles.searchInput}
+        />
+        <select
+          value={filterGrade}
+          onChange={(e) => setFilterGrade(e.target.value)}
+          className={styles.filterSelect}
+        >
+          <option value="">All Grades</option>
+          {uniqueGrades.map((grade) => (
+            <option key={grade} value={grade}>
+              {grade}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filterSection}
+          onChange={(e) => setFilterSection(e.target.value)}
+          className={styles.filterSelect}
+        >
+          <option value="">All Sections</option>
+          {uniqueSections.map((section) => (
+            <option key={section} value={section}>
+              Section {section}
+            </option>
+          ))}
+        </select>
+      </div>
 
-        <div className={styles.container}>
-          {/* Students List */}
-          <div className={styles.studentsList}>
-            <h2>Students ({filteredStudents.length})</h2>
-            {loading ? (
-              <div className={styles.loading}>Loading students...</div>
-            ) : (
-              <div className={styles.studentsGrid}>
-                {filteredStudents.map((student) => (
-                  <div
-                    key={student._id}
-                    className={`${styles.studentCard} ${
-                      selectedStudent?._id === student._id ? styles.selected : ""
-                    }`}
-                    onClick={() => fetchStudentReport(student)}
-                  >
-                    <div className={styles.studentName}>
-                      {student.firstName} {student.lastName}
-                    </div>
-                    <div className={styles.studentInfo}>
-                      <span>{student.grade} - {student.section}</span>
-                      <span>{student.enrollmentNo}</span>
-                    </div>
+      <div className={styles.container}>
+        {/* Students List */}
+        <div className={styles.studentsList}>
+          <h2>Students ({filteredStudents.length})</h2>
+          {loading ? (
+            <div className={styles.loading}>Loading students...</div>
+          ) : (
+            <div className={styles.studentsGrid}>
+              {filteredStudents.map((student) => (
+                <div
+                  key={student._id}
+                  className={`${styles.studentCard} ${
+                    selectedStudent?._id === student._id ? styles.selected : ""
+                  }`}
+                  onClick={() => fetchStudentReport(student)}
+                >
+                  <div className={styles.studentName}>
+                    {student.firstName} {student.lastName}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Report Display */}
-          <div className={styles.reportSection}>
-            {reportLoading ? (
-              <div className={styles.loading}>Loading report...</div>
-            ) : studentReport ? (
-              <div className={styles.report}>
-                <div className={styles.reportHeader}>
-                  <h2>
-                    Report: {studentReport.student.firstName} {studentReport.student.lastName}
-                  </h2>
-                  <button onClick={exportReportPDF} className={styles.exportBtn}>
-                    📄 Export PDF
-                  </button>
+                  <div className={styles.studentInfo}>
+                    <span>{student.grade} - {student.section}</span>
+                    <span>{student.enrollmentNo}</span>
+                  </div>
                 </div>
-
-                {/* Student Information */}
-                <section className={styles.section}>
-                  <h3>Student Information</h3>
-                  <div className={styles.infoGrid}>
-                    <div><strong>Name:</strong> {studentReport.student.firstName} {studentReport.student.lastName}</div>
-                    <div><strong>Enrollment No:</strong> {studentReport.student.enrollmentNo}</div>
-                    <div><strong>Grade:</strong> {studentReport.student.grade}</div>
-                    <div><strong>Section:</strong> {studentReport.student.section}</div>
-                    <div><strong>Date of Birth:</strong> {studentReport.student.dob || "N/A"}</div>
-                    <div><strong>Gender:</strong> {studentReport.student.gender || "N/A"}</div>
-                    <div><strong>Contact:</strong> {studentReport.student.contactNumber || "N/A"}</div>
-                    <div><strong>Address:</strong> {studentReport.student.address || "N/A"}</div>
-                  </div>
-                </section>
-
-                {/* Parent Information */}
-                <section className={styles.section}>
-                  <h3>Parent/Guardian Information</h3>
-                  <div className={styles.infoGrid}>
-                    <div><strong>Father:</strong> {studentReport.student.fatherName || "N/A"}</div>
-                    <div><strong>Father Contact:</strong> {studentReport.student.fatherContact || "N/A"}</div>
-                    <div><strong>Mother:</strong> {studentReport.student.motherName || "N/A"}</div>
-                    <div><strong>Mother Contact:</strong> {studentReport.student.motherContact || "N/A"}</div>
-                  </div>
-                </section>
-
-                {/* Attendance Statistics */}
-                <section className={styles.section}>
-                  <h3>Attendance Statistics (Current Year)</h3>
-                  <div className={styles.statsGrid}>
-                    <div className={styles.statCard}>
-                      <div className={styles.statValue}>{studentReport.attendanceStats.total}</div>
-                      <div className={styles.statLabel}>Total Days</div>
-                    </div>
-                    <div className={styles.statCard}>
-                      <div className={styles.statValue}>{studentReport.attendanceStats.present}</div>
-                      <div className={styles.statLabel}>Present</div>
-                    </div>
-                    <div className={styles.statCard}>
-                      <div className={styles.statValue}>{studentReport.attendanceStats.absent}</div>
-                      <div className={styles.statLabel}>Absent</div>
-                    </div>
-                    <div className={styles.statCard}>
-                      <div className={styles.statValue}>{studentReport.attendanceStats.percentage}%</div>
-                      <div className={styles.statLabel}>Attendance %</div>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Marks */}
-                <section className={styles.section}>
-                  <h3>Academic Performance</h3>
-                  {studentReport.marksByTerm.length === 0 ? (
-                    <p>No marks available</p>
-                  ) : (
-                    <div className={styles.marksTable}>
-                      {studentReport.marksByTerm.map((termData, idx) => (
-                        <div key={idx} className={styles.termMarks}>
-                          <h4>{termData.year} - Term {termData.term}</h4>
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Subject</th>
-                                <th>Marks</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {Object.entries(termData.marks || {}).map(([subject, mark]) => (
-                                mark !== null && mark !== undefined && (
-                                  <tr key={subject}>
-                                    <td>{subject.charAt(0).toUpperCase() + subject.slice(1)}</td>
-                                    <td>{mark}</td>
-                                  </tr>
-                                )
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr>
-                                <td><strong>Total</strong></td>
-                                <td><strong>{termData.total}</strong></td>
-                              </tr>
-                              <tr>
-                                <td><strong>Average</strong></td>
-                                <td><strong>{termData.average}</strong></td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              </div>
-            ) : (
-              <div className={styles.placeholder}>
-                <p>Select a student to view their full report</p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
-      </main>
-    </div>
+
+        {/* Report Display */}
+        <div className={styles.reportSection}>
+          {reportLoading ? (
+            <div className={styles.loading}>Loading report...</div>
+          ) : studentReport ? (
+            <div className={styles.report}>
+              <div className={styles.reportHeader}>
+                <h2>
+                  Report: {studentReport.student.firstName} {studentReport.student.lastName}
+                </h2>
+                <button onClick={exportReportPDF} className={styles.exportBtn}>
+                  📄 Export PDF
+                </button>
+              </div>
+
+              {/* Student Information */}
+              <section className={styles.section}>
+                <h3>Student Information</h3>
+                <div className={styles.infoGrid}>
+                  <div><strong>Name:</strong> {studentReport.student.firstName} {studentReport.student.lastName}</div>
+                  <div><strong>Enrollment No:</strong> {studentReport.student.enrollmentNo}</div>
+                  <div><strong>Grade:</strong> {studentReport.student.grade}</div>
+                  <div><strong>Section:</strong> {studentReport.student.section}</div>
+                  <div><strong>Date of Birth:</strong> {studentReport.student.dob || "N/A"}</div>
+                  <div><strong>Gender:</strong> {studentReport.student.gender || "N/A"}</div>
+                  <div><strong>Contact:</strong> {studentReport.student.contactNumber || "N/A"}</div>
+                  <div><strong>Address:</strong> {studentReport.student.address || "N/A"}</div>
+                </div>
+              </section>
+
+              {/* Parent Information */}
+              <section className={styles.section}>
+                <h3>Parent/Guardian Information</h3>
+                <div className={styles.infoGrid}>
+                  <div><strong>Father:</strong> {studentReport.student.fatherName || "N/A"}</div>
+                  <div><strong>Father Contact:</strong> {studentReport.student.fatherContact || "N/A"}</div>
+                  <div><strong>Mother:</strong> {studentReport.student.motherName || "N/A"}</div>
+                  <div><strong>Mother Contact:</strong> {studentReport.student.motherContact || "N/A"}</div>
+                </div>
+              </section>
+
+              {/* Attendance Statistics */}
+              <section className={styles.section}>
+                <h3>Attendance Statistics (Current Year)</h3>
+                <div className={styles.statsGrid}>
+                  <div className={styles.statCard}>
+                    <div className={styles.statValue}>{studentReport.attendanceStats.total}</div>
+                    <div className={styles.statLabel}>Total Days</div>
+                  </div>
+                  <div className={styles.statCard}>
+                    <div className={styles.statValue}>{studentReport.attendanceStats.present}</div>
+                    <div className={styles.statLabel}>Present</div>
+                  </div>
+                  <div className={styles.statCard}>
+                    <div className={styles.statValue}>{studentReport.attendanceStats.absent}</div>
+                    <div className={styles.statLabel}>Absent</div>
+                  </div>
+                  <div className={styles.statCard}>
+                    <div className={styles.statValue}>{studentReport.attendanceStats.percentage}%</div>
+                    <div className={styles.statLabel}>Attendance %</div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Marks */}
+              <section className={styles.section}>
+                <h3>Academic Performance</h3>
+                {studentReport.marksByTerm.length === 0 ? (
+                  <p>No marks available</p>
+                ) : (
+                  <div className={styles.marksTable}>
+                    {studentReport.marksByTerm.map((termData, idx) => (
+                      <div key={idx} className={styles.termMarks}>
+                        <h4>{termData.year} - Term {termData.term}</h4>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Subject</th>
+                              <th>Marks</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(termData.marks || {}).map(([subject, mark]) => (
+                              mark !== null && mark !== undefined && (
+                                <tr key={subject}>
+                                  <td>{subject.charAt(0).toUpperCase() + subject.slice(1)}</td>
+                                  <td>{mark}</td>
+                                </tr>
+                              )
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr>
+                              <td><strong>Total</strong></td>
+                              <td><strong>{termData.total}</strong></td>
+                            </tr>
+                            <tr>
+                              <td><strong>Average</strong></td>
+                              <td><strong>{termData.average}</strong></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : (
+            <div className={styles.placeholder}>
+              <p>Select a student to view their full report</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </AdminLayout>
   );
 };
 

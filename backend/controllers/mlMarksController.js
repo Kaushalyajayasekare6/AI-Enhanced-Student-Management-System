@@ -31,6 +31,13 @@ export const predictMarksML = async (req, res) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
+    // Restrict grade 1-5 only for mark prediction
+    const studentGrade = student.grade ? String(student.grade).match(/(\d+)/) : null;
+    const gradeValue = studentGrade ? Number(studentGrade[1]) : null;
+    if (!gradeValue || gradeValue < 1 || gradeValue > 5) {
+      return res.status(400).json({ success: false, message: "Marks prediction is available only for grades 1 to 5." });
+    }
+
     // Get current year and term if not provided
     const currentYear = year || new Date().getFullYear();
     const currentTerm = term || 1;
@@ -79,7 +86,12 @@ export const predictMarksML = async (req, res) => {
                 (marks.environment !== undefined && marks.environment !== null) ? marks.environment :
                 (marks.Environment !== undefined && marks.Environment !== null) ? marks.Environment : 50;
     
-    console.log("Extracted marks:", { english, math, sinhala, tamil, env });
+    // Map religion (try multiple variations)
+    const religion = (marks.religion !== undefined && marks.religion !== null) ? marks.religion :
+                     (marks.Religion !== undefined && marks.Religion !== null) ? marks.Religion :
+                     (marks.RELIGION !== undefined && marks.RELIGION !== null) ? marks.RELIGION : 50;
+    
+    console.log("Extracted marks:", { english, math, sinhala, tamil, env, religion });
 
     // Calculate attendance percentage for current year
     const yearStart = new Date(`${currentYear}-01-01`);
@@ -103,15 +115,16 @@ export const predictMarksML = async (req, res) => {
       sinhala: Number(sinhala),
       tamil: Number(tamil),
       env: Number(env),
+      religion: Number(religion),
       attendance: attendance
     };
     
     console.log("ML Input:", mlInput);
 
-    // Call FastAPI ML service
-    const mlServiceUrl = process.env.ML_SERVICE_URL || "http://localhost:8001";
+    // Call FastAPI ML service for marks prediction
+    const mlServiceUrlMarks = process.env.ML_SERVICE_URL_MARKS || "http://localhost:8003";
     const mlResponse = await axios.post(
-      `${mlServiceUrl}/predict`,
+      `${mlServiceUrlMarks}/predict`,
       mlInput,
       {
         timeout: 10000 // 10 second timeout
@@ -122,27 +135,32 @@ export const predictMarksML = async (req, res) => {
     let shouldUpdate = false;
     let updateRecommendations = [];
     
-    if (mlResponse.data.predicted_marks) {
-      const subjects = Object.keys(mlResponse.data.predicted_marks);
+    console.log("ML Response data:", mlResponse.data);
+    console.log("Predicted marks field:", mlResponse.data);
+    
+    if (mlResponse.data && typeof mlResponse.data === 'object') {
+      const subjects = Object.keys(mlResponse.data);
       
       subjects.forEach(subject => {
-        const prediction = mlResponse.data.predicted_marks[subject];
-        if (prediction.trend === "decline") {
-          shouldUpdate = true;
-          updateRecommendations.push({
-            subject: subject.toUpperCase(),
-            message: `Predicted decline in ${subject}. Current: ${prediction.current || mlInput[subject]}, Predicted: ${prediction.predicted}`,
-            action: "Increase practice and tutoring"
-          });
-        }
-        
-        if (prediction.predicted < 50) {
-          shouldUpdate = true;
-          updateRecommendations.push({
-            subject: subject.toUpperCase(),
-            message: `Low prediction for ${subject}: ${prediction.predicted}`,
-            action: "Urgent intervention needed"
-          });
+        const prediction = mlResponse.data[subject];
+        if (prediction && typeof prediction === 'object' && prediction.predicted !== undefined) {
+          if (prediction.predicted < mlInput[subject]) {
+            shouldUpdate = true;
+            updateRecommendations.push({
+              subject: subject.toUpperCase(),
+              message: `Predicted decline in ${subject}. Current: ${mlInput[subject]}, Predicted: ${prediction.predicted}`,
+              action: "Increase practice and tutoring"
+            });
+          }
+          
+          if (prediction.predicted < 50) {
+            shouldUpdate = true;
+            updateRecommendations.push({
+              subject: subject.toUpperCase(),
+              message: `Low prediction for ${subject}: ${prediction.predicted}`,
+              action: "Urgent intervention needed"
+            });
+          }
         }
       });
     }
@@ -150,10 +168,12 @@ export const predictMarksML = async (req, res) => {
     // Transform the response to frontend-friendly format
     const predictionData = mlResponse.data;
     
+    console.log("Final response - predicted_marks:", predictionData);
+    
     res.json({
       success: true,
-      prediction: predictionData.predicted_marks || predictionData.prediction,
-      predicted_marks: predictionData.predicted_marks || predictionData.prediction,
+      prediction: predictionData,
+      predicted_marks: predictionData,
       inputData: mlInput,
       input_marks: mlInput,
       student: {
@@ -171,8 +191,20 @@ export const predictMarksML = async (req, res) => {
   } catch (error) {
     console.error("ML Error:", error.message);
     console.error("ML Error Stack:", error.stack);
-    
-    // If ML service is not available, return a default prediction
+
+    if (error.response) {
+      const status = error.response.status || 500;
+      const remoteMessage = error.response.data?.message || error.response.data?.error || JSON.stringify(error.response.data);
+      console.error("ML service response error:", status, remoteMessage);
+      return res.status(status).json({
+        success: false,
+        message: "ML prediction service returned an error",
+        error: remoteMessage,
+        details: error.response.data,
+      });
+    }
+
+    // If ML service is not available, return a clear service unavailable error
     if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
       return res.status(503).json({ 
         success: false,
@@ -180,7 +212,7 @@ export const predictMarksML = async (req, res) => {
         error: "Service connection failed"
       });
     }
-    
+
     res.status(500).json({ 
       success: false,
       message: "Marks prediction failed",
@@ -218,6 +250,12 @@ export const predictTermMarksML = async (req, res) => {
     const student = await Student.findById(targetStudentId);
     if (!student) {
       return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    const studentGrade = student.grade ? String(student.grade).match(/(\d+)/) : null;
+    const gradeValue = studentGrade ? Number(studentGrade[1]) : null;
+    if (!gradeValue || gradeValue < 1 || gradeValue > 5) {
+      return res.status(400).json({ success: false, message: "Term prediction for marks is available only for grades 1 to 5." });
     }
 
     const currentYear = year || new Date().getFullYear();
@@ -325,7 +363,7 @@ export const predictTermMarksML = async (req, res) => {
     }
 
     // Call FastAPI ML service for term-based prediction
-    const mlServiceUrl = process.env.ML_SERVICE_URL || "http://localhost:8001";
+    const mlServiceUrl = process.env.ML_SERVICE_URL_MARKS || process.env.ML_SERVICE_URL || "http://localhost:8002";
     const mlResponse = await axios.post(
       `${mlServiceUrl}/predict-term`,
       mlInput,

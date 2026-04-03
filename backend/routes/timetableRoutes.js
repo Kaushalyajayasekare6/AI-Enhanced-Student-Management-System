@@ -8,13 +8,26 @@ import {
   updateTimetable,
   getAllTimetables,
   generateTimetableSuggestions,
+  generateTimetableGrade1_5,
+  generateTimetableGrade6_9,
+  autoGenerateAllPrimaryTimetables,
+  autoGenerateAllMiddleTimetables,
 } from "../controllers/timetableController.js";
+
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // Generate timetable (admin only)
 router.post("/generate", protect, generateTimetable);
+
+// Auto generate timetable for Grade 1-5
+router.post("/generate-grade1-5", protect, generateTimetableGrade1_5);
+router.post("/generate-grade1-5-all", protect, autoGenerateAllPrimaryTimetables);
+
+// Auto generate timetable for Grade 6-9
+router.post("/generate-grade6-9", protect, generateTimetableGrade6_9);
+router.post("/generate-grade6-9-all", protect, autoGenerateAllMiddleTimetables);
 
 // Get intelligent suggestions for timetable creation
 router.post("/suggestions", protect, generateTimetableSuggestions);
@@ -38,6 +51,3 @@ router.put("/", protect, updateTimetable);
 router.delete("/", protect, deleteTimetable);
 
 export default router;
-
-
-

@@ -1,6 +1,7 @@
 // src/Pages/OtherWorkers/OtherWorkersList.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminLayout from "../../Components/AdminLayout/AdminLayout";
 import { FaPlus, FaSearch, FaEye, FaEdit, FaTrash } from "react-icons/fa";
 import axios from "axios";
 import styles from "./OtherWorkerDetailsPage.module.css";
@@ -59,63 +60,65 @@ const OtherWorkerDetailsPage = () => {
   );
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1>Other Workers</h1>
-        <button className={styles.addBtn} onClick={handleAddWorker}>
-          <FaPlus /> Add Worker
-        </button>
-      </div>
-
-      <div className={styles.filters}>
-        <div className={styles.searchBox}>
-          <FaSearch />
-          <input
-            type="text"
-            placeholder="Search by name, ID, role, phone or email"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+    <AdminLayout title="Other Workers" role="admin">
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h1>Other Workers</h1>
+          <button className={styles.addBtn} onClick={handleAddWorker}>
+            <FaPlus /> Add Worker
+          </button>
         </div>
-      </div>
 
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Full Name</th>
-            <th>Role</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Joined Date</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((worker) => (
-            <tr key={worker._id}>
-              <td>{worker.workerId}</td>
-              <td>{worker.fullName}</td>
-              <td>{worker.role}</td>
-              <td>{worker.phone}</td>
-              <td>{worker.email}</td>
-              <td>{worker.joinedDate}</td>
-              <td className={styles.actions}>
-                <button className={styles.viewBtn} onClick={() => handleView(worker)}>
-                  <FaEye /> View
-                </button>
-                <button className={styles.editBtn} onClick={() => handleEdit(worker)}>
-                  <FaEdit /> Edit
-                </button>
-                <button className={styles.deleteBtn} onClick={() => handleDelete(worker._id)}>
-                  <FaTrash /> Delete
-                </button>
-              </td>
+        <div className={styles.filters}>
+          <div className={styles.searchBox}>
+            <FaSearch />
+            <input
+              type="text"
+              placeholder="Search by name, ID, role, phone or email"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Full Name</th>
+              <th>Role</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Joined Date</th>
+              <th>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {filtered.map((worker) => (
+              <tr key={worker._id}>
+                <td>{worker.workerId}</td>
+                <td>{worker.fullName}</td>
+                <td>{worker.role}</td>
+                <td>{worker.phone}</td>
+                <td>{worker.email}</td>
+                <td>{worker.joinedDate}</td>
+                <td className={styles.actions}>
+                  <button className={styles.viewBtn} onClick={() => handleView(worker)}>
+                    <FaEye /> View
+                  </button>
+                  <button className={styles.editBtn} onClick={() => handleEdit(worker)}>
+                    <FaEdit /> Edit
+                  </button>
+                  <button className={styles.deleteBtn} onClick={() => handleDelete(worker._id)}>
+                    <FaTrash /> Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </AdminLayout>
   );
 };
 

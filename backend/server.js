@@ -18,8 +18,11 @@ import noticeRoutes from "./routes/noticeRoutes.js";
 import mlRoutes from "./routes/mlRoutes.js";
 
 
+
 dotenv.config(); // Load environment variables
 connectDB(); // Connect to MongoDB
+
+
 
 const app = express();
 

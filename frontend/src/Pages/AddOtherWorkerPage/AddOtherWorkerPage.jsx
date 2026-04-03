@@ -1,6 +1,7 @@
 // src/Pages/OtherWorkers/AddOtherWorkerPage.jsx
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import AdminLayout from "../../Components/AdminLayout/AdminLayout";
 import { FaArrowLeft, FaUserPlus, FaUserEdit } from "react-icons/fa";
 import axios from "axios";
 import styles from "./AddOtherWorkerPage.module.css";
@@ -52,100 +53,104 @@ const AddOtherWorkerPage = () => {
     }
   };
 
+  const pageTitle = mode === "add" ? "Add New Worker" : mode === "edit" ? "Edit Worker" : "Worker Details";
+
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => navigate("/OtherWorkersList")}>
-          <FaArrowLeft /> Back
-        </button>
-        <h1>{mode === "add" ? "Add New Worker" : mode === "edit" ? "Edit Worker" : "Worker Details"}</h1>
+    <AdminLayout title={pageTitle} role="admin">
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <button className={styles.backBtn} onClick={() => navigate("/OtherWorkerDetailsPage")}>
+            <FaArrowLeft /> Back
+          </button>
+          <h1>{pageTitle}</h1>
+        </div>
+
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <div className={styles.grid}>
+            <div className={styles.formGroup}>
+              <label>Worker ID</label>
+              <input
+                type="text"
+                name="workerId"
+                value={formData.workerId}
+                onChange={handleChange}
+                disabled={mode !== "add"}
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Full Name</label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                disabled={mode === "view"}
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Role</label>
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                disabled={mode === "view"}
+                required
+              >
+                <option value="">-- Select Role --</option>
+                <option value="Clerk">Clerk</option>
+                <option value="Librarian">Librarian</option>
+                <option value="Security">Security</option>
+                <option value="Janitor">Janitor</option>
+                <option value="Accountant">Accountant</option>
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Department</label>
+              <input
+                type="text"
+                name="department"
+                value={formData.department}
+                onChange={handleChange}
+                disabled={mode === "view"}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Phone</label>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} disabled={mode === "view"} required />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Email</label>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} disabled={mode === "view"} required />
+            </div>
+
+            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+              <label>Address</label>
+              <textarea name="address" value={formData.address} onChange={handleChange} disabled={mode === "view"} />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Joined Date</label>
+              <input type="date" name="joinedDate" value={formData.joinedDate} onChange={handleChange} disabled={mode === "view"} required />
+            </div>
+          </div>
+
+          <div className={styles.actions}>
+            {mode !== "view" && (
+              <button type="submit" className={styles.submitBtn}>
+                {mode === "add" ? <><FaUserPlus /> Add Worker</> : <><FaUserEdit /> Update Worker</>}
+              </button>
+            )}
+          </div>
+        </form>
       </div>
-
-      <form className={styles.form} onSubmit={handleSubmit}>
-        <div className={styles.grid}>
-          <div className={styles.formGroup}>
-            <label>Worker ID</label>
-            <input
-              type="text"
-              name="workerId"
-              value={formData.workerId}
-              onChange={handleChange}
-              disabled={mode !== "add"}
-              required
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Full Name</label>
-            <input
-              type="text"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              disabled={mode === "view"}
-              required
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Role</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              disabled={mode === "view"}
-              required
-            >
-              <option value="">-- Select Role --</option>
-              <option value="Clerk">Clerk</option>
-              <option value="Librarian">Librarian</option>
-              <option value="Security">Security</option>
-              <option value="Janitor">Janitor</option>
-              <option value="Accountant">Accountant</option>
-            </select>
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Department</label>
-            <input
-              type="text"
-              name="department"
-              value={formData.department}
-              onChange={handleChange}
-              disabled={mode === "view"}
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Phone</label>
-            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} disabled={mode === "view"} required />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Email</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} disabled={mode === "view"} required />
-          </div>
-
-          <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-            <label>Address</label>
-            <textarea name="address" value={formData.address} onChange={handleChange} disabled={mode === "view"} />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Joined Date</label>
-            <input type="date" name="joinedDate" value={formData.joinedDate} onChange={handleChange} disabled={mode === "view"} required />
-          </div>
-        </div>
-
-        <div className={styles.actions}>
-          {mode !== "view" && (
-            <button type="submit" className={styles.submitBtn}>
-              {mode === "add" ? <><FaUserPlus /> Add Worker</> : <><FaUserEdit /> Update Worker</>}
-            </button>
-          )}
-        </div>
-      </form>
-    </div>
+    </AdminLayout>
   );
 };
 

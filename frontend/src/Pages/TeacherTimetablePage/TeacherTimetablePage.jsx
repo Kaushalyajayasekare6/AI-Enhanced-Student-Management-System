@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import Sidebar from "../../Components/Sidebar/Sidebar";
-import Header from "../../Components/Header/Header";
+import TeacherLayout from "../../Components/TeacherLayout/TeacherLayout";
 import TeacherTimetable from "../../Components/TeacherTimetable/TeacherTimetable";
 import styles from "./TeacherTimetablePage.module.css";
 import jsPDF from "jspdf";
@@ -26,71 +25,67 @@ const TeacherTimetablePage = () => {
   };
 
   return (
-    <div className={styles.dashboard}>
-      <Sidebar role={role} />
-      <main className={styles.main}>
-        <Header />
-        <h2 className={styles.pageTitle}>Teacher Timetable</h2>
-        <p className={styles.pageSubtitle}>
-          View and manage your teaching schedule
-        </p>
+    <TeacherLayout title="Teacher Timetable" role={role}>
+      <h2 className={styles.pageTitle}>Teacher Timetable</h2>
+      <p className={styles.pageSubtitle}>
+        View and manage your teaching schedule
+      </p>
 
-        {/* Controls */}
-        <div className={styles.controls}>
-          <div className={styles.viewToggle}>
-            <button
-              className={view === "day" ? styles.active : ""}
-              onClick={() => setView("day")}
-            >
-              Daily
-            </button>
-            <button
-              className={view === "week" ? styles.active : ""}
-              onClick={() => setView("week")}
-            >
-              Weekly
-            </button>
-          </div>
-
-          {view === "day" && (
-            <select
-              value={selectedDay}
-              onChange={(e) => setSelectedDay(e.target.value)}
-            >
-              <option value="Mon">Monday</option>
-              <option value="Tue">Tuesday</option>
-              <option value="Wed">Wednesday</option>
-              <option value="Thu">Thursday</option>
-              <option value="Fri">Friday</option>
-            </select>
-          )}
-
-          <div className={styles.dateRange}>
-            <input
-              type="date"
-              value={dateRange.from}
-              onChange={(e) =>
-                setDateRange({ ...dateRange, from: e.target.value })
-              }
-            />
-            <span>to</span>
-            <input
-              type="date"
-              value={dateRange.to}
-              onChange={(e) =>
-                setDateRange({ ...dateRange, to: e.target.value })
-              }
-            />
-          </div>
-
-          <button onClick={exportPDF} className={styles.exportBtn}>
-            Export PDF
+      {/* Controls */}
+      <div className={styles.controls}>
+        <div className={styles.viewToggle}>
+          <button
+            className={view === "day" ? styles.active : ""}
+            onClick={() => setView("day")}
+          >
+            Daily
+          </button>
+          <button
+            className={view === "week" ? styles.active : ""}
+            onClick={() => setView("week")}
+          >
+            Weekly
           </button>
         </div>
 
-        <TeacherTimetable view={view} selectedDay={selectedDay} />
-      </main>
-    </div>
+        {view === "day" && (
+          <select
+            value={selectedDay}
+            onChange={(e) => setSelectedDay(e.target.value)}
+          >
+            <option value="Mon">Monday</option>
+            <option value="Tue">Tuesday</option>
+            <option value="Wed">Wednesday</option>
+            <option value="Thu">Thursday</option>
+            <option value="Fri">Friday</option>
+          </select>
+        )}
+
+        <div className={styles.dateRange}>
+          <input
+            type="date"
+            value={dateRange.from}
+            onChange={(e) =>
+              setDateRange({ ...dateRange, from: e.target.value })
+            }
+          />
+          <span>to</span>
+          <input
+            type="date"
+            value={dateRange.to}
+            onChange={(e) =>
+              setDateRange({ ...dateRange, to: e.target.value })
+            }
+          />
+        </div>
+
+        <button onClick={exportPDF} className={styles.exportBtn}>
+          Export PDF
+        </button>
+      </div>
+
+      <TeacherTimetable view={view} selectedDay={selectedDay} />
+    </TeacherLayout>
   );
 };
 

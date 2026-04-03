@@ -107,3 +107,29 @@
   background:#fee2e2;
   color:#991b1b;
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    z-index: 999;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    box-shadow: 4px 0 12px rgba(0,0,0,0.15);
+  }
+  
+  .sidebar.mobileOpen {
+    transform: translateX(0);
+  }
+}
+
+@media (min-width: 769px) {
+  .sidebar {
+    position: sticky;
+    transform: none !important;
+  }
+}

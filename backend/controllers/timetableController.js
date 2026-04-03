@@ -1,741 +1,1147 @@
 import Timetable from "../models/Timetable.js";
 import Teacher from "../models/teacherModel.js";
-import Student from "../models/studentModel.js";
 import ClassTeacher from "../models/ClassTeacher.js";
+import Student from "../models/studentModel.js";
 
-// Intelligent time slots with breaks
-// 10-10-20 interval: 10min break after slot 2, 20min lunch after slot 4
 const INTELLIGENT_TIME_SLOTS = [
-  "08:00-09:00",  // 1
-  "09:00-10:00",  // 2
-  // 10 min break
-  "10:10-11:10",  // 3
-  "11:10-12:10",  // 4
-  // 20 min lunch
-  "12:30-13:30",  // 5
-  "13:30-14:30",  // 6
-  "14:30-15:30",  // 7
+  "07:30-08:20",
+  "08:20-09:10",
+  "09:10-10:20",
+  "10:40-11:30",
+  "11:30-12:20",
+  "12:30-13:30"
 ];
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-// Define core and categorical subjects
-const CORE_SUBJECTS = ["English", "Sinhala", "Maths", "Science"];
-const CATEGORICAL_SUBJECTS = {
-  10: ["Physics", "Chemistry", "Biology"],
-  11: ["Physics", "Chemistry", "Biology"],
-  12: ["Physics", "Chemistry", "Biology"],
-  13: ["Physics", "Chemistry", "Biology"],
-};
-
-// Common subjects by grade level
-// Subjects by grade. Added primary grades 1-5 and kept junior/senior lists.
 const GRADE_SUBJECTS = {
-  1: ["Sinhala", "English", "Maths", "EVS", "Religion", "Art", "Music", "PE"],
-  2: ["Sinhala", "English", "Maths", "EVS", "Religion", "Art", "Music", "PE"],
-  3: ["Sinhala", "English", "Maths", "EVS", "Religion", "Art", "Music", "PE"],
-  4: ["Sinhala", "English", "Maths", "EVS", "Religion", "Art", "Music", "PE"],
-  5: ["Sinhala", "English", "Maths", "EVS", "Religion", "Art", "Music", "PE"],
-  6: ["Maths", "Science", "English", "Sinhala", "History", "Geography", "ICT", "Art"],
-  7: ["Maths", "Science", "English", "Sinhala", "History", "Geography", "ICT", "Art"],
-  8: ["Maths", "Science", "English", "Sinhala", "History", "Geography", "ICT", "Art"],
-  9: ["Maths", "Science", "English", "Sinhala", "History", "Geography", "ICT", "Art"],
-  10: ["Maths", "Science", "English", "Sinhala", "History", "Geography", "ICT", "Physics", "Chemistry", "Biology", "Commerce", "Art"],
-  11: ["Maths", "Science", "English", "Sinhala", "History", "Geography", "ICT", "Physics", "Chemistry", "Biology", "Commerce", "Art"],
-  12: ["Maths", "English", "General English", "Physics", "Chemistry", "Biology", "Commerce", "ICT"],
-  13: ["Maths", "English", "General English", "Physics", "Chemistry", "Biology", "Commerce", "ICT"],
+  1: ["English", "Sinhala", "Maths", "EVS", "Religion", "Art"],
+  2: ["English", "Sinhala", "Maths", "EVS", "Religion", "Art"],
+  3: ["English", "Sinhala", "Maths", "EVS", "Religion", "Art"],
+  4: ["English", "Sinhala", "Maths", "EVS", "Religion", "Art"],
+  5: ["English", "Sinhala", "Maths", "EVS", "Religion", "Art"],
+  6: ["English", "Sinhala", "Maths", "Science", "Religion", "Art"],
+  7: ["English", "Sinhala", "Maths", "Science", "Religion", "Art"],
+  8: ["English", "Sinhala", "Maths", "Science", "Religion", "Art"],
+  9: ["English", "Sinhala", "Maths", "Science", "Religion", "Art"],
+  10: ["English", "Sinhala", "Maths", "Science", "Religion", "History"],
+  11: ["English", "Sinhala", "Maths", "Science", "Religion", "History"],
+  12: ["English", "Sinhala", "Maths", "Science", "Religion", "History"],
+  13: ["English", "Sinhala", "Maths", "Science", "Religion", "History"]
 };
 
-// Grade rule defaults (periods per day and notes). These follow the Sri Lankan-style rules described by the user.
 const GRADE_RULES = {
-  primary: { grades: [1,2,3,4,5], periodsPerDay: 6, lightSubjectsPerDay: 1 },
-  junior: { grades: [6,7,8,9], periodsPerDay: 8 },
-  ol: { grades: [10,11], periodsPerDay: 8 },
-  al: { grades: [12,13], periodsPerDay: 6 }
+  primary: { grades: [1,2,3,4,5], periodsPerDay: 6 }
 };
 
-// Helper: choose rule set for a grade
-function getGradeRule(gradeNum) {
-  if (GRADE_RULES.primary.grades.includes(gradeNum)) return GRADE_RULES.primary;
-  if (GRADE_RULES.junior.grades.includes(gradeNum)) return GRADE_RULES.junior;
-  if (GRADE_RULES.ol.grades.includes(gradeNum)) return GRADE_RULES.ol;
-  return GRADE_RULES.al;
-}
+const DEFAULT_PRIMARY_SECTIONS = ["A", "B", "C", "D"];
 
-/**
- * Helper to generate slots for a class given grade-specific rules.
- * - Ensures Maths + language daily for primary
- * - Spreads heavy subjects across the week
- * - Adds double periods for practicals where possible
- * - Includes unassigned subjects if no teacher available
- */
-async function generateSlotsForGrade(gradeNum, section, allSubjects, teacherSubjectMap, teachers) {
+// -------------------- Grades 6-9 (Middle) --------------------
+// 8 periods per day
+const MIDDLE_TIME_SLOTS_6_9 = [
+  "07:30-08:10",
+  "08:10-08:50",
+  "08:50-09:30",
+  "09:30-10:10",
+  "10:30-11:10",
+  "11:10-11:50",
+  "11:50-12:30",
+  "12:30-13:10",
+];
+
+const MIDDLE_SECTIONS = ["A", "B", "C", "D"];
+
+// Core compulsory subjects (excluding the aesthetic elective)
+const MIDDLE_CORE_SUBJECTS = [
+  // Languages
+  "Sinhala",
+  "Tamil",
+  "English",
+
+  // Academics
+  "Maths",
+  "Science",
+  "History",
+  "Geography",
+
+  // Other compulsory
+  "Religion",
+  "Civic Education",
+  "Health",
+  "ICT",
+  "PTS (Physical Training)",
+];
+
+const MIDDLE_RELIGION_TEACHER_SUBJECTS = [
+  "Buddhism",
+  "Hinduism",
+  "Islam",
+  "Catholicism",
+  "Christianity",
+];
+
+const MIDDLE_CIVIC_ALIASES = [
+  "Civic Education",
+  "Citizenship",
+  "Civilization",
+  "Social Science",
+  "Life Competencies",
+];
+
+const MIDDLE_PTS_ALIASES = ["PTS (Physical Training)", "Technology"];
+
+const MIDDLE_ELECTIVES_BY_SECTION = {
+  A: "Art",
+  B: "Music",
+  C: "Dancing",
+  D: "Drama and Theatre",
+};
+
+const getMiddleElectiveForSection = (section) => {
+  const normalized = normalizeSection(section);
+  return MIDDLE_ELECTIVES_BY_SECTION[normalized] || "Art";
+};
+
+const getMiddleSubjectsCycle = (electiveSubject) => {
+  return [...MIDDLE_CORE_SUBJECTS, electiveSubject];
+};
+
+const getMiddleTeacherCandidates = (slotSubject, teachers) => {
+  if (!slotSubject || !Array.isArray(teachers)) return [];
+
+  // For most subjects, the teacher must explicitly teach that subject name.
+  const has = (t, allowed) => (t?.subjects || []).some((s) => allowed.includes(s));
+
+  switch (slotSubject) {
+    case "Religion":
+      return teachers.filter((t) => has(t, MIDDLE_RELIGION_TEACHER_SUBJECTS));
+    case "Civic Education":
+      return teachers.filter((t) => has(t, MIDDLE_CIVIC_ALIASES));
+    case "PTS (Physical Training)":
+      return teachers.filter((t) => has(t, MIDDLE_PTS_ALIASES));
+    case "Art":
+      return teachers.filter((t) => has(t, ["Art", "ART"]));
+    default:
+      return teachers.filter((t) => (t?.subjects || []).includes(slotSubject));
+  }
+};
+
+const buildMiddleSlots = ({ gradeNum, section, electiveSubject }) => {
+  const timeSlots = MIDDLE_TIME_SLOTS_6_9;
+  const subjectsCycle = getMiddleSubjectsCycle(electiveSubject);
+
   const slots = [];
-  const rule = getGradeRule(gradeNum);
-
-  // Determine periods per day
-  const periodsPerDay = rule.periodsPerDay || 6;
-  const timeSlotsPerDay = INTELLIGENT_TIME_SLOTS.slice(0, periodsPerDay);
-
-  // Build global teacher schedule
-  const globalTeacherSchedule = {};
-  teachers.forEach(t => {
-    globalTeacherSchedule[t._id.toString()] = {};
-    DAYS.forEach(day => {
-      globalTeacherSchedule[t._id.toString()][day] = [];
-    });
-  });
-
-  // Track counts per subject per day
-  const subjectDayCount = {};
-  allSubjects.forEach(subject => {
-    subjectDayCount[subject] = {};
-    DAYS.forEach(d => subjectDayCount[subject][d] = 0);
-  });
-
-  // Utilities
-  const findTeacherFor = (subject, day, timeSlot) => {
-    const teachersFor = teacherSubjectMap[subject] || [];
-    return teachersFor.find(teacher => !globalTeacherSchedule[teacher._id.toString()][day].includes(timeSlot));
-  };
-
-  // Primary rules (1-5): Maths + Language daily, 1 light subject per day, avoid two heavy subjects
-  if (GRADE_RULES.primary.grades.includes(gradeNum)) {
-    const language = allSubjects.find(s => /(Sinhala|Tamil|English)/i.test(s)) || allSubjects[0];
-    const maths = allSubjects.find(s => /Maths|Mathematics/i.test(s)) || null;
-    const lightSubjects = allSubjects.filter(s => /(Art|Music|PE|EVS|Religion)/i.test(s));
-
-    DAYS.forEach(day => {
-      // Slot 0: Language
-      const ts0 = timeSlotsPerDay[0];
-      const langTeacher = findTeacherFor(language, day, ts0);
-      if (langTeacher) {
-        slots.push({ day, timeSlot: ts0, subject: language, teacherId: langTeacher._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-        globalTeacherSchedule[langTeacher._id.toString()][day].push(ts0);
-        subjectDayCount[language][day]++;
-      } else {
-        slots.push({ day, timeSlot: ts0, subject: language, teacherId: null, teacherStatus: "unassigned", room: `Room ${gradeNum}${section}` });
-        subjectDayCount[language][day]++;
-      }
-
-      // Slot 1: Maths
-      if (maths) {
-        const ts1 = timeSlotsPerDay[1] || ts0;
-        const mathTeacher = findTeacherFor(maths, day, ts1);
-        if (mathTeacher) {
-          slots.push({ day, timeSlot: ts1, subject: maths, teacherId: mathTeacher._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-          globalTeacherSchedule[mathTeacher._id.toString()][day].push(ts1);
-          subjectDayCount[maths][day]++;
-        } else {
-          slots.push({ day, timeSlot: ts1, subject: maths, teacherId: null, teacherStatus: "unassigned", room: `Room ${gradeNum}${section}` });
-          subjectDayCount[maths][day]++;
-        }
-      }
-
-      // Remaining slots: fill with one light subject and others
-      for (let i = 2; i < timeSlotsPerDay.length; i++) {
-        const timeSlot = timeSlotsPerDay[i];
-        let subject = null;
-
-        if (i === 2 && lightSubjects.length > 0) {
-          subject = lightSubjects[(i - 2) % lightSubjects.length];
-        } else {
-          // pick any subject not overloaded today
-          subject = allSubjects.find(s => subjectDayCount[s][day] < 2);
-        }
-
-        if (subject) {
-          const teacher = findTeacherFor(subject, day, timeSlot);
-          if (teacher) {
-            slots.push({ day, timeSlot, subject, teacherId: teacher._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-            globalTeacherSchedule[teacher._id.toString()][day].push(timeSlot);
-            subjectDayCount[subject][day]++;
-          } else {
-            slots.push({ day, timeSlot, subject, teacherId: null, teacherStatus: "unassigned", room: `Room ${gradeNum}${section}` });
-            subjectDayCount[subject][day]++;
-          }
-        }
-      }
-    });
-
-    return slots;
-  }
-
-  // Junior (6-9) and O/L rules: languages and maths almost daily, practicals get double periods
-  if (GRADE_RULES.junior.grades.includes(gradeNum) || GRADE_RULES.ol.grades.includes(gradeNum)) {
-    const maths = allSubjects.find(s => /Maths|Mathematics/i.test(s));
-    const language = allSubjects.find(s => /(Sinhala|Tamil|English)/i.test(s));
-    const practicals = allSubjects.filter(s => /(ICT|Art|Music|Dancing|Practical)/i.test(s));
-
-    DAYS.forEach(day => {
-      // Ensure maths appears early in day
-      if (maths) {
-        const ts = timeSlotsPerDay[0];
-        const t = findTeacherFor(maths, day, ts);
-        if (t) {
-          slots.push({ day, timeSlot: ts, subject: maths, teacherId: t._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-          globalTeacherSchedule[t._id.toString()][day].push(ts);
-          subjectDayCount[maths][day]++;
-        } else {
-          slots.push({ day, timeSlot: ts, subject: maths, teacherId: null, teacherStatus: "unassigned", room: `Room ${gradeNum}${section}` });
-          subjectDayCount[maths][day]++;
-        }
-      }
-
-      // Ensure language appears
-      if (language) {
-        const ts = timeSlotsPerDay[1] || timeSlotsPerDay[0];
-        const t = findTeacherFor(language, day, ts);
-        if (t) {
-          slots.push({ day, timeSlot: ts, subject: language, teacherId: t._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-          globalTeacherSchedule[t._id.toString()][day].push(ts);
-          subjectDayCount[language][day]++;
-        } else {
-          slots.push({ day, timeSlot: ts, subject: language, teacherId: null, teacherStatus: "unassigned", room: `Room ${gradeNum}${section}` });
-          subjectDayCount[language][day]++;
-        }
-      }
-
-      // Place practicals as double periods (adjacent slots) on selected days
-      practicals.forEach((practical, idx) => {
-        // Spread practicals across the week
-        const shouldPlace = (DAYS.indexOf(day) + idx) % 3 === 0; // simple spread
-        if (shouldPlace) {
-          const slotA = timeSlotsPerDay[2];
-          const slotB = timeSlotsPerDay[3] || timeSlotsPerDay[2];
-          const tA = findTeacherFor(practical, day, slotA);
-          const tB = findTeacherFor(practical, day, slotB);
-          const teacher = tA || tB;
-          if (teacher) {
-            slots.push({ day, timeSlot: slotA, subject: practical, teacherId: teacher._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-            if (slotB && !globalTeacherSchedule[teacher._id.toString()][day].includes(slotB)) {
-              slots.push({ day, timeSlot: slotB, subject: practical, teacherId: teacher._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-              globalTeacherSchedule[teacher._id.toString()][day].push(slotB);
-              subjectDayCount[practical][day] += 2;
-            }
-            globalTeacherSchedule[teacher._id.toString()][day].push(slotA);
-            subjectDayCount[practical][day]++;
-          } else {
-            slots.push({ day, timeSlot: slotA, subject: practical, teacherId: null, teacherStatus: "unassigned", room: `Room ${gradeNum}${section}` });
-            subjectDayCount[practical][day]++;
-          }
-        }
+  DAYS.forEach((day, dayIndex) => {
+    timeSlots.forEach((timeSlot, slotIndex) => {
+      const globalIndex = dayIndex * timeSlots.length + slotIndex;
+      const subject = subjectsCycle[globalIndex % subjectsCycle.length];
+      slots.push({
+        day,
+        timeSlot,
+        subject,
+        teacherId: null,
+        teacherStatus: "unassigned",
+        room: `Room ${gradeNum}${section}`,
       });
-
-      // Fill remaining slots with other subjects avoiding heavy clustering
-      for (const timeSlot of timeSlotsPerDay) {
-        if (slots.find(s => s.day === day && s.timeSlot === timeSlot)) continue; // occupied
-
-        const candidate = allSubjects.find(s => {
-          // Avoid placing Science and Maths together on same day consecutively
-          if (/Science/i.test(s) && maths && subjectDayCount[maths][day] > 0) return false;
-          return subjectDayCount[s][day] < 2;
-        });
-
-        if (candidate) {
-          const teacher = findTeacherFor(candidate, day, timeSlot);
-          if (teacher) {
-            slots.push({ day, timeSlot, subject: candidate, teacherId: teacher._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-            globalTeacherSchedule[teacher._id.toString()][day].push(timeSlot);
-            subjectDayCount[candidate][day]++;
-          } else {
-            slots.push({ day, timeSlot, subject: candidate, teacherId: null, teacherStatus: "unassigned", room: `Room ${gradeNum}${section}` });
-            subjectDayCount[candidate][day]++;
-          }
-        }
-      }
     });
-
-    return slots;
-  }
-
-  // A/L (12-13): focus on 3 main subjects (pick top 3 available), give them 2-3 periods per day
-  if (GRADE_RULES.al.grades.includes(gradeNum)) {
-    // choose 3 main subjects that have teachers
-    const candidates = allSubjects.filter(s => teacherSubjectMap[s]);
-    const main = candidates.slice(0, 3);
-
-    DAYS.forEach(day => {
-      // For each main subject give 2 periods if possible
-      let placed = 0;
-      for (const subject of main) {
-        const times = timeSlotsPerDay.slice(0, 3); // prefer morning slots
-        let placedToday = 0;
-        for (const ts of times) {
-          if (placedToday >= 2) break;
-          const t = findTeacherFor(subject, day, ts);
-          if (t) {
-            slots.push({ day, timeSlot: ts, subject, teacherId: t._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-            globalTeacherSchedule[t._id.toString()][day].push(ts);
-            subjectDayCount[subject][day]++;
-            placedToday++;
-            placed++;
-          }
-        }
-      }
-
-      // Fill the rest with support subjects
-      for (const ts of timeSlotsPerDay) {
-        if (slots.find(s => s.day === day && s.timeSlot === ts)) continue;
-        const subject = allSubjects.find(s => subjectDayCount[s][day] < 2);
-        if (subject) {
-          const t = findTeacherFor(subject, day, ts);
-          if (t) {
-            slots.push({ day, timeSlot: ts, subject, teacherId: t._id, teacherStatus: "assigned", room: `Room ${gradeNum}${section}` });
-            globalTeacherSchedule[t._id.toString()][day].push(ts);
-            subjectDayCount[subject][day]++;
-          } else {
-            slots.push({ day, timeSlot: ts, subject, teacherId: null, teacherStatus: "unassigned", room: `Room ${gradeNum}${section}` });
-            subjectDayCount[subject][day]++;
-          }
-        }
-      }
-    });
-
-    return slots;
-  }
+  });
 
   return slots;
-}
+};
 
-/**
- * 🔹 Generate timetable intelligently with specific rules
- */
-export const generateTimetable = async (req, res) => {
-  try {
-    const { grade, section, stream, term, year } = req.body;
+const normalizeSection = (section = "") => String(section).trim().toUpperCase();
 
-    if (!grade || !section || !term || !year) {
-      return res.status(400).json({ message: "Missing required fields: grade, section, term, year" });
-    }
+const isPrimaryTeacher = (teacher) => {
+  const range = String(teacher?.classRange || "").toLowerCase();
+  if (!range) return true;
+  return (
+    range.includes("1-5") ||
+    range.includes("1 to 5") ||
+    range.includes("grade 1") ||
+    range.includes("primary")
+  );
+};
 
-    const gradeNum = Number(grade);
+const isMiddleTeacher = (teacher) => {
+  const range = String(teacher?.classRange || "").toLowerCase();
+  if (!range) return true;
+  return (
+    range.includes("6-9") ||
+    range.includes("6 to 9") ||
+    range.includes("grade 6") ||
+    range.includes("middle")
+  );
+};
 
-    // Check if timetable already exists
-    const existing = await Timetable.findOne({ grade: gradeNum, section, stream: stream || null, term: Number(term), year: Number(year) });
-    if (existing) {
-      return res.status(400).json({ message: "Timetable already exists. Delete it first to regenerate." });
-    }
+const parseGradeValue = (gradeValue) => {
+  if (typeof gradeValue === "number") return gradeValue;
+  const match = String(gradeValue || "").match(/\d+/);
+  return match ? parseInt(match[0], 10) : NaN;
+};
 
-    // Get all active teachers
-    const teachers = await Teacher.find({ leaveDate: { $in: [null, "", undefined] } });
-    
-    // Get subjects for this grade
-    const allSubjects = GRADE_SUBJECTS[gradeNum] || GRADE_SUBJECTS[10];
+const parseTermYear = (term, year) => ({
+  term: Number.parseInt(term, 10) || 1,
+  year: Number.parseInt(year, 10) || new Date().getFullYear(),
+});
 
-    if (!allSubjects || allSubjects.length === 0) {
-      return res.status(400).json({ message: "No subjects defined for this grade level" });
-    }
+/* -------------------- CONFLICT CHECKING -------------------- */
 
-    // Create teacher-subject mapping
-    const teacherSubjectMap = {};
-    teachers.forEach(teacher => {
-      if (teacher.subjects && teacher.subjects.length > 0) {
-        teacher.subjects.forEach(subject => {
-          if (!teacherSubjectMap[subject]) {
-            teacherSubjectMap[subject] = [];
-          }
-          teacherSubjectMap[subject].push(teacher);
-        });
+const checkTeacherConflicts = async (slots, term, year, excludeTimetableId = null) => {
+  const conflicts = [];
+
+  // Get all existing timetables for this term/year (excluding the one being updated if provided)
+  const query = { term, year };
+  if (excludeTimetableId) {
+    query._id = { $ne: excludeTimetableId };
+  }
+
+  const existingTimetables = await Timetable.find(query);
+
+  // Build a map of teacher availability from existing timetables
+  const teacherSchedule = new Map();
+
+  // Populate with existing assignments
+  existingTimetables.forEach(timetable => {
+    timetable.slots.forEach(slot => {
+      if (slot.teacherId) {
+        const teacherId = String(slot.teacherId);
+        const key = `${slot.day}|${slot.timeSlot}`;
+
+        if (!teacherSchedule.has(teacherId)) {
+          teacherSchedule.set(teacherId, new Set());
+        }
+        teacherSchedule.get(teacherId).add(key);
       }
     });
+  });
 
-    // Log which subjects have teachers and which don't
-    const subjectsWithTeachers = Object.keys(teacherSubjectMap);
-    const subjectsWithoutTeachers = allSubjects.filter(s => !subjectsWithTeachers.includes(s));
-    
-    if (subjectsWithoutTeachers.length > 0) {
-      console.warn(`⚠️ No teachers assigned for subjects: ${subjectsWithoutTeachers.join(", ")}`);
+  // Also build a map for the new slots to check internal conflicts
+  const newSlotSchedule = new Map();
+
+  // Check new slots for conflicts
+  slots.forEach((slot, index) => {
+    if (slot.teacherId) {
+      const teacherId = String(slot.teacherId);
+      const key = `${slot.day}|${slot.timeSlot}`;
+
+      // Check against existing timetables
+      if (teacherSchedule.has(teacherId) && teacherSchedule.get(teacherId).has(key)) {
+        conflicts.push({
+          slotIndex: index,
+          teacherId,
+          day: slot.day,
+          timeSlot: slot.timeSlot,
+          subject: slot.subject,
+          conflictType: 'existing_timetable_conflict',
+          message: 'Teacher already assigned to another class at this time'
+        });
+      }
+
+      // Check for conflicts within the new slots themselves
+      if (newSlotSchedule.has(teacherId) && newSlotSchedule.get(teacherId).has(key)) {
+        conflicts.push({
+          slotIndex: index,
+          teacherId,
+          day: slot.day,
+          timeSlot: slot.timeSlot,
+          subject: slot.subject,
+          conflictType: 'internal_conflict',
+          message: 'Teacher assigned multiple times at the same time slot'
+        });
+      }
+
+      // Add to new slot schedule for future checks
+      if (!newSlotSchedule.has(teacherId)) {
+        newSlotSchedule.set(teacherId, new Set());
+      }
+      newSlotSchedule.get(teacherId).add(key);
+    }
+  });
+
+  return conflicts;
+};
+
+const buildPrimarySlots = ({
+  gradeNum,
+  section,
+  subjects,
+  classIndex = 0,
+  englishTeacherId = null,
+  classTeacherId = null,
+}) => {
+  const timeSlots = INTELLIGENT_TIME_SLOTS.slice(0, 6);
+  const slots = [];
+
+  DAYS.forEach((day, dayIndex) => {
+    const englishPeriodIndex = (classIndex + dayIndex) % timeSlots.length;
+    const otherSubjects = subjects.filter((s) => s !== "English");
+    let otherSubjectCounter = 0;
+
+    timeSlots.forEach((timeSlot, slotIndex) => {
+      const isEnglish = slotIndex === englishPeriodIndex;
+      const subject = isEnglish
+        ? "English"
+        : otherSubjects[otherSubjectCounter++ % otherSubjects.length];
+      const teacherId = isEnglish ? englishTeacherId : classTeacherId;
+
+      slots.push({
+        day,
+        timeSlot,
+        subject,
+        teacherId,
+        teacherStatus: teacherId ? "assigned" : "unassigned",
+        room: `Room ${gradeNum}${section}`,
+      });
+    });
+  });
+
+  return slots;
+};
+
+const upsertTimetable = async ({ grade, section, term, year, slots, autoGenerated = true }) =>
+  Timetable.findOneAndUpdate(
+    { grade, section, term, year },
+    { $set: { slots, autoGenerated } },
+    {
+      new: true,
+      upsert: true,
+      setDefaultsOnInsert: true,
+      runValidators: true,
+    }
+  );
+
+
+/* -------------------- GENERATE TIMETABLE -------------------- */
+
+const generateTimetable = async (req, res) => {
+  try {
+
+    const { grade, section } = req.body;
+    const { term, year } = parseTermYear(req.body.term, req.body.year);
+
+    const gradeNum = parseInt(grade);
+    const normalizedSection = normalizeSection(section);
+    if (isNaN(gradeNum) || gradeNum < 1 || gradeNum > 13) {
+      return res.status(400).json({ message: "Invalid grade. Only grades 1-13 are supported." });
+    }
+    if (!normalizedSection) {
+      return res.status(400).json({ message: "Section is required." });
     }
 
-    // Generate slots using grade-specific rules
-    const slots = await generateSlotsForGrade(gradeNum, section, allSubjects, teacherSubjectMap, teachers);
+    const subjects = GRADE_SUBJECTS[gradeNum];
+    const days = DAYS;
+    const timeSlots = INTELLIGENT_TIME_SLOTS.slice(0,6);
 
-    // Create and save timetable
-    const timetable = new Timetable({
+    const slots = [];
+
+    days.forEach(day=>{
+      timeSlots.forEach((timeSlot,i)=>{
+
+        const subject = subjects[i % subjects.length];
+
+        slots.push({
+          day,
+          timeSlot,
+          subject,
+          teacherStatus:"unassigned",
+          room:`Room ${gradeNum}${section}`
+        });
+
+      });
+    });
+
+    const timetable = await upsertTimetable({
       grade: gradeNum,
-      section,
-      stream: stream || null,
-      term: Number(term),
-      year: Number(year),
+      section: normalizedSection,
+      term,
+      year,
       slots,
       autoGenerated: true,
     });
 
-    await timetable.save();
-
     res.json({
-      success: true,
-      message: "✅ Intelligent timetable generated successfully!",
-      timetable,
-      stats: {
-        totalSlots: slots.length,
-        coreSubjectsDaily: true,
-        categoricalSubjects: (gradeNum >= 10) ? "2 periods in 2 days" : "N/A",
-        intervals: "10-10-20 (10min break, 20min lunch)",
-        daysPerWeek: 5,
-        unassignedSubjects: subjectsWithoutTeachers.length > 0 ? subjectsWithoutTeachers : [],
-        warning: subjectsWithoutTeachers.length > 0 ? `⚠️ ${subjectsWithoutTeachers.length} subject(s) have no teacher assigned: ${subjectsWithoutTeachers.join(", ")}` : null,
-      }
+      success:true,
+      timetable
     });
-  } catch (err) {
-    console.error("❌ Error generating timetable:", err.message);
-    res.status(500).json({ message: "Failed to generate timetable: " + err.message });
+
+  } catch (error) {
+
+    res.status(500).json({message:error.message});
+
   }
 };
 
-/**
- * 🔹 Get timetable for a class
- */
-export const getTimetable = async (req, res) => {
-  try {
-    const { grade, section, stream, term, year } = req.query;
 
-    const query = { grade: Number(grade), section, term: Number(term), year: Number(year) };
-    if (stream) query.stream = stream;
+/* -------------------- GET TIMETABLE -------------------- */
 
-    const timetable = await Timetable.findOne(query).populate("slots.teacherId", "firstName lastName");
+const getTimetable = async (req,res)=>{
+  try{
+
+    const {grade, section, term = 1, year = new Date().getFullYear()} = req.query;
+    const gradeNum = Number.parseInt(grade, 10);
+    const normalizedSection = normalizeSection(section);
+    const parsedTerm = Number.parseInt(term, 10);
+    const parsedYear = Number.parseInt(year, 10);
+
+    const timetable = await Timetable.findOne({
+      grade: gradeNum,
+      section: normalizedSection,
+      term: parsedTerm,
+      year: parsedYear,
+    }).populate("slots.teacherId", "firstName lastName subjects");
 
     if (!timetable) {
       return res.status(404).json({ message: "Timetable not found" });
     }
 
     res.json(timetable);
-  } catch (err) {
-    console.error("❌ Error fetching timetable:", err.message);
-    res.status(500).json({ message: "Failed to fetch timetable" });
+
+  }catch(err){
+
+    res.status(500).json({message:err.message});
+
   }
 };
 
-/**
- * 🔹 Get timetable for a teacher
- */
-export const getTeacherTimetable = async (req, res) => {
-  try {
-    const teacherId = req.user.id; // From JWT
 
-    // Find user to get userId reference
-    const User = (await import("../models/User.js")).default;
-    const user = await User.findById(teacherId);
-    if (!user || user.role !== "teacher") {
-      return res.status(403).json({ message: "Not authorized" });
-    }
+/* -------------------- TEACHER TIMETABLE -------------------- */
 
-    // Find all timetables where this teacher has slots
+const getTeacherTimetable = async (req,res)=>{
+  try{
+
+    const teacherId = req.user.userId;
+    const { term = 1, year = new Date().getFullYear() } = req.query;
+    const parsedTerm = Number.parseInt(term, 10);
+    const parsedYear = Number.parseInt(year, 10);
+
     const timetables = await Timetable.find({
-      "slots.teacherId": user.userId,
-    }).populate("slots.teacherId", "firstName lastName");
+      "slots.teacherId":teacherId
+    })
+      .where("term").equals(parsedTerm)
+      .where("year").equals(parsedYear)
+      .populate("slots.teacherId", "firstName lastName");
 
-    // Filter slots for this teacher only
-    const teacherSlots = [];
-    const teacherObjectId = user.userId.toString();
-    
-    timetables.forEach(timetable => {
-      timetable.slots.forEach(slot => {
-        // Check if slot belongs to this teacher
-        let slotTeacherId = null;
-        if (slot.teacherId) {
-          if (slot.teacherId._id) {
-            slotTeacherId = slot.teacherId._id.toString();
-          } else if (typeof slot.teacherId.toString === 'function') {
-            slotTeacherId = slot.teacherId.toString();
-          } else {
-            slotTeacherId = String(slot.teacherId);
-          }
-        }
-        
-        if (slotTeacherId && slotTeacherId === teacherObjectId) {
-          teacherSlots.push({
+    const slots = [];
+    timetables.forEach((timetable) => {
+      timetable.slots.forEach((slot) => {
+        if (slot.teacherId && String(slot.teacherId._id) === String(teacherId)) {
+          slots.push({
             day: slot.day,
             timeSlot: slot.timeSlot,
             subject: slot.subject,
             room: slot.room,
             grade: timetable.grade,
             section: timetable.section,
-            stream: timetable.stream,
+            term: timetable.term,
+            year: timetable.year,
           });
         }
       });
     });
 
-    res.json({ slots: teacherSlots });
-  } catch (err) {
-    console.error("❌ Error fetching teacher timetable:", err.message);
-    res.status(500).json({ message: "Failed to fetch teacher timetable" });
+    res.json({ slots, term: parsedTerm, year: parsedYear });
+
+  }catch(err){
+
+    res.status(500).json({message:err.message});
+
   }
 };
 
-/**
- * 🔹 Get timetable for a student
- */
-export const getStudentTimetable = async (req, res) => {
-  try {
-    const studentId = req.user.id; // From JWT
 
-    // Find user to get userId reference
-    const User = (await import("../models/User.js")).default;
-    const user = await User.findById(studentId);
-    if (!user || user.role !== "student") {
-      return res.status(403).json({ message: "Not authorized" });
-    }
+/* -------------------- STUDENT TIMETABLE -------------------- */
 
-    // Find student to get grade and section
-    const student = await Student.findById(user.userId);
-    if (!student) {
-      return res.status(404).json({ message: "Student not found" });
-    }
+const getStudentTimetable = async (req,res)=>{
+  try{
 
-    const grade = parseInt(student.grade) || 10;
-    const currentYear = new Date().getFullYear();
-    const currentTerm = 1; // Default to term 1, can be made dynamic
+    const student = await Student.findById(req.user.userId);
+    if (!student) return res.status(404).json({ message: "Student not found" });
 
-    const query = { grade, section: student.section, year: currentYear, term: currentTerm };
-    if (student.stream) query.stream = student.stream;
+    const grade = parseGradeValue(student.grade);
+    const section = normalizeSection(student.section);
+    const requestedTerm = Number.parseInt(req.query.term, 10);
+    const requestedYear = Number.parseInt(req.query.year, 10);
+    const studentTerm = Number.parseInt(student.term, 10);
+    const term = requestedTerm || studentTerm || 1;
+    const year = requestedYear || new Date().getFullYear();
 
-    const timetable = await Timetable.findOne(query).populate("slots.teacherId", "firstName lastName");
-
-    if (!timetable) {
-      return res.status(404).json({ message: "Timetable not found for your class" });
-    }
-
-    res.json(timetable);
-  } catch (err) {
-    console.error("❌ Error fetching student timetable:", err.message);
-    res.status(500).json({ message: "Failed to fetch student timetable" });
-  }
-};
-
-/**
- * 🔹 Delete timetable
- */
-export const deleteTimetable = async (req, res) => {
-  try {
-    const { grade, section, stream, term, year } = req.body;
-
-    const query = { grade: Number(grade), section, term: Number(term), year: Number(year) };
-    if (stream) query.stream = stream;
-
-    const timetable = await Timetable.findOneAndDelete(query);
+    const timetable = await Timetable.findOne({ grade, section, term, year })
+      .populate("slots.teacherId", "firstName lastName");
 
     if (!timetable) {
       return res.status(404).json({ message: "Timetable not found" });
     }
 
-    res.json({ message: "Timetable deleted successfully" });
-  } catch (err) {
-    console.error("❌ Error deleting timetable:", err.message);
-    res.status(500).json({ message: "Failed to delete timetable" });
+    res.json(timetable);
+
+  }catch(err){
+
+    res.status(500).json({message:err.message});
+
   }
 };
 
-/**
- * 🔹 Update timetable (regenerate with new constraints)
- */
-export const updateTimetable = async (req, res) => {
-  try {
-    const { grade, section, stream, term, year } = req.body;
+
+/* -------------------- DELETE TIMETABLE -------------------- */
+
+const deleteTimetable = async (req,res)=>{
+  try{
+    const { grade, section, term, year } = req.body;
 
     if (!grade || !section || !term || !year) {
-      return res.status(400).json({ message: "Missing required fields: grade, section, term, year" });
+      return res.status(400).json({ message: "Grade, section, term, and year are required" });
     }
 
-    const gradeNum = Number(grade);
-    const query = { 
-      grade: gradeNum, 
-      section, 
-      stream: stream || null, 
-      term: Number(term), 
-      year: Number(year) 
-    };
+    const gradeNum = parseInt(grade);
+    const normalizedSection = normalizeSection(section);
+    const parsedTerm = Number.parseInt(term, 10);
+    const parsedYear = Number.parseInt(year, 10);
 
-    // Check if timetable exists
-    const existingTimetable = await Timetable.findOne(query);
-    if (!existingTimetable) {
-      return res.status(404).json({ message: "Timetable not found. Cannot update." });
-    }
-
-    // Get all active teachers
-    const teachers = await Teacher.find({ leaveDate: { $in: [null, "", undefined] } });
-    
-    // Get subjects for this grade
-    const allSubjects = GRADE_SUBJECTS[gradeNum] || GRADE_SUBJECTS[10];
-
-    if (!allSubjects || allSubjects.length === 0) {
-      return res.status(400).json({ message: "No subjects defined for this grade level" });
-    }
-
-    // Create teacher-subject mapping
-    const teacherSubjectMap = {};
-    teachers.forEach(teacher => {
-      if (teacher.subjects && teacher.subjects.length > 0) {
-        teacher.subjects.forEach(subject => {
-          if (!teacherSubjectMap[subject]) {
-            teacherSubjectMap[subject] = [];
-          }
-          teacherSubjectMap[subject].push(teacher);
-        });
-      }
+    const timetable = await Timetable.findOneAndDelete({
+      grade: gradeNum,
+      section: normalizedSection,
+      term: parsedTerm,
+      year: parsedYear,
     });
 
-    // Verify we have teachers for core subjects (only enforce for secondary and above)
-    if (gradeNum >= 6) {
-      const coreWithTeachers = CORE_SUBJECTS.filter(s => teacherSubjectMap[s]);
-      if (coreWithTeachers.length < 3) {
-        return res.status(400).json({ message: "Not enough teachers for core subjects" });
+    if (!timetable) {
+      return res.status(404).json({ message: "Timetable not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Timetable deleted successfully"
+    });
+
+  }catch(err){
+    res.status(500).json({message: err.message});
+  }
+};
+
+
+/* -------------------- UPDATE TIMETABLE -------------------- */
+
+const updateTimetable = async (req,res)=>{
+  try{
+    const { grade, section, term, year, slots } = req.body;
+
+    if (!grade || !section || !term || !year) {
+      return res.status(400).json({ message: "Grade, section, term, and year are required" });
+    }
+
+    const gradeNum = parseInt(grade);
+    const normalizedSection = normalizeSection(section);
+    const parsedTerm = Number.parseInt(term, 10);
+    const parsedYear = Number.parseInt(year, 10);
+
+    // Find existing timetable
+    const existingTimetable = await Timetable.findOne({
+      grade: gradeNum,
+      section: normalizedSection,
+      term: parsedTerm,
+      year: parsedYear,
+    });
+
+    if (!existingTimetable) {
+      return res.status(404).json({ message: "Timetable not found" });
+    }
+
+    // Check for conflicts if slots with teacher assignments are provided
+    if (slots && Array.isArray(slots)) {
+      const conflicts = await checkTeacherConflicts(slots, parsedTerm, parsedYear, existingTimetable._id);
+
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          message: "Teacher conflicts detected",
+          conflicts: conflicts.map(c => ({
+            teacherId: c.teacherId,
+            day: c.day,
+            timeSlot: c.timeSlot,
+            subject: c.subject,
+            message: c.message
+          }))
+        });
       }
     }
 
-    // Generate slots using grade-specific helper
-    const slots = await generateSlotsForGrade(gradeNum, section, allSubjects, teacherSubjectMap, teachers);
-
     // Update the timetable
-    const updatedTimetable = await Timetable.findOneAndUpdate(
-      query,
-      { slots, updatedAt: new Date() },
-      { new: true }
+    const updatedTimetable = await Timetable.findByIdAndUpdate(
+      existingTimetable._id,
+      req.body,
+      { new: true, runValidators: true }
     ).populate("slots.teacherId", "firstName lastName");
 
     res.json({
       success: true,
-      message: "✅ Timetable updated successfully!",
       timetable: updatedTimetable,
-      stats: {
-        totalSlots: slots.length,
-        coreSubjectsDaily: true,
-        categoricalSubjects: (gradeNum >= 10) ? "2 periods in 2 days" : "N/A",
-        intervals: "10-10-20 (10min break, 20min lunch)",
-        daysPerWeek: 5,
-      }
+      message: "Timetable updated successfully"
     });
-  } catch (err) {
-    console.error("❌ Error updating timetable:", err.message);
-    res.status(500).json({ message: "Failed to update timetable: " + err.message });
+
+  }catch(err){
+    res.status(500).json({message: err.message});
   }
 };
 
-/**
- * 🔹 Get all timetables (admin view)
- */
-export const getAllTimetables = async (req, res) => {
-  try {
-    const timetables = await Timetable.find().populate("slots.teacherId", "firstName lastName");
+
+/* -------------------- GET ALL TIMETABLES -------------------- */
+
+const getAllTimetables = async (req,res)=>{
+  try{
+    const { term, year } = req.query;
+    const filters = {};
+    if (term) filters.term = Number.parseInt(term, 10);
+    if (year) filters.year = Number.parseInt(year, 10);
+
+    const timetables = await Timetable.find(filters)
+      .populate("slots.teacherId", "firstName lastName")
+      .sort({ grade: 1, section: 1 });
+
     res.json(timetables);
-  } catch (err) {
-    console.error("❌ Error fetching timetables:", err.message);
-    res.status(500).json({ message: "Failed to fetch timetables" });
+
+  }catch(err){
+
+    res.status(500).json({message:err.message});
+
   }
 };
 
-/**
- * 🔹 Generate intelligent suggestions for timetable
- */
-export const generateTimetableSuggestions = async (req, res) => {
+
+/* -------------------- AI SUGGESTIONS -------------------- */
+
+const generateTimetableSuggestions = async (req,res)=>{
+  try{
+
+    res.json({
+      suggestions:"AI timetable suggestions feature coming soon"
+    });
+
+  }catch(err){
+
+    res.status(500).json({message:err.message});
+
+  }
+};
+
+
+/* -------------------- AUTO GENERATE GRADE 1-5 -------------------- */
+
+const generateTimetableGrade1_5 = async (req, res) => {
+
   try {
-    const { grade, section, stream, term, year } = req.body;
 
-    if (!grade || !section || !term || !year) {
-      return res.status(400).json({ message: "Missing required fields" });
+    const { grade, section, englishTeacherId, classTeacherId } = req.body;
+    const { term, year } = parseTermYear(req.body.term, req.body.year);
+
+    const gradeNum = parseInt(grade);
+    const normalizedSection = normalizeSection(section);
+
+    if (Number.isNaN(gradeNum) || gradeNum < 1 || gradeNum > 5) {
+      return res.status(400).json({ message: "Only grades 1-5 allowed" });
+    }
+    if (!normalizedSection) {
+      return res.status(400).json({ message: "Section is required" });
     }
 
-    // Get all active teachers
-    const teachers = await Teacher.find({ leaveDate: { $in: [null, "", undefined] } });
+    const [englishTeacher, classTeacher] = await Promise.all([
+      Teacher.findById(englishTeacherId),
+      Teacher.findById(classTeacherId)
+    ]);
 
-    // Get subjects for this grade
-    const subjects = GRADE_SUBJECTS[grade] || GRADE_SUBJECTS[10];
+    if (!englishTeacher || !classTeacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
 
-    // Create teacher-subject mapping
-    const teacherSubjectMap = {};
-    teachers.forEach(teacher => {
-      if (teacher.subjects && teacher.subjects.length > 0) {
-        teacher.subjects.forEach(subject => {
-          if (!teacherSubjectMap[subject]) {
-            teacherSubjectMap[subject] = [];
-          }
-          teacherSubjectMap[subject].push(teacher);
-        });
+    if (!englishTeacher.subjects.includes("English")) {
+      return res.status(400).json({ message: "English teacher required" });
+    }
+
+    const subjects = GRADE_SUBJECTS[gradeNum];
+    const slots = buildPrimarySlots({
+      gradeNum,
+      section: normalizedSection,
+      subjects,
+      classIndex: 0,
+      englishTeacherId: englishTeacher._id,
+      classTeacherId: classTeacher._id,
+    });
+
+    // Check for teacher conflicts before creating timetable
+    const conflicts = await checkTeacherConflicts(slots, term, year);
+
+    if (conflicts.length > 0) {
+      return res.status(409).json({
+        message: "Teacher conflicts detected",
+        conflicts: conflicts.map(c => ({
+          teacherId: c.teacherId,
+          day: c.day,
+          timeSlot: c.timeSlot,
+          subject: c.subject,
+          message: c.message
+        }))
+      });
+    }
+
+    const timetable = await upsertTimetable({
+      grade: gradeNum,
+      section: normalizedSection,
+      term,
+      year,
+      slots,
+      autoGenerated: true,
+    });
+
+    await ClassTeacher.findOneAndUpdate(
+
+      {grade:gradeNum,section: normalizedSection},
+      {teacherId:classTeacherId},
+      {upsert:true}
+
+    );
+
+    res.json({
+      success:true,
+      timetable,
+      message:`Auto timetable Grade ${gradeNum}${section} created`
+    });
+
+  } catch (err) {
+
+    res.status(500).json({ message: err.message });
+
+  }
+
+};
+
+/* -------------------- AUTO GENERATE GRADE 6-9 -------------------- */
+const generateTimetableGrade6_9 = async (req, res) => {
+  try {
+    const { grade, section, term: termInput, year: yearInput } = req.body;
+    const gradeNum = parseInt(grade, 10);
+    const normalizedSection = normalizeSection(section);
+
+    const termYear = parseTermYear(termInput, yearInput);
+    const term = termYear.term;
+    const year = termYear.year;
+
+    if (Number.isNaN(gradeNum) || gradeNum < 6 || gradeNum > 9) {
+      return res.status(400).json({ message: "Only grades 6-9 allowed" });
+    }
+    if (!normalizedSection || !["A", "B", "C", "D"].includes(normalizedSection)) {
+      return res.status(400).json({ message: "Section must be one of A, B, C, D" });
+    }
+
+    const electiveSubject = getMiddleElectiveForSection(normalizedSection);
+    const skeletonSlots = buildMiddleSlots({
+      gradeNum,
+      section: normalizedSection,
+      electiveSubject,
+    });
+
+    const teacherRecords = await Teacher.find({
+      $or: [{ leaveDate: { $exists: false } }, { leaveDate: null }, { leaveDate: "" }],
+    });
+    const middleTeachers = teacherRecords.filter((t) => isMiddleTeacher(t));
+    const activeTeachers = middleTeachers.length ? middleTeachers : teacherRecords.filter(Boolean);
+
+    const teacherBusy = new Map();
+    const teacherLoad = new Map();
+    const isTeacherFree = (teacherId, day, timeSlot) => {
+      const busy = teacherBusy.get(String(teacherId));
+      return !busy?.has(`${day}|${timeSlot}`);
+    };
+    const reserveTeacher = (teacherId, day, timeSlot) => {
+      const key = String(teacherId);
+      if (!teacherBusy.has(key)) teacherBusy.set(key, new Set());
+      teacherBusy.get(key).add(`${day}|${timeSlot}`);
+      teacherLoad.set(key, (teacherLoad.get(key) || 0) + 1);
+    };
+
+    let classTeacherId = null;
+    const slots = skeletonSlots.map((slot) => {
+      const candidates = getMiddleTeacherCandidates(slot.subject, activeTeachers);
+      // Prefer the least-loaded free teacher
+      const sorted = [...candidates].sort(
+        (a, b) => (teacherLoad.get(String(a._id)) || 0) - (teacherLoad.get(String(b._id)) || 0)
+      );
+      const chosen = sorted.find((t) => isTeacherFree(t._id, slot.day, slot.timeSlot)) || null;
+
+      if (chosen) {
+        reserveTeacher(chosen._id, slot.day, slot.timeSlot);
+        if (!classTeacherId && slot.subject === "English") classTeacherId = chosen._id;
+        return {
+          ...slot,
+          teacherId: chosen._id,
+          teacherStatus: "assigned",
+        };
       }
+
+      return { ...slot, teacherId: null, teacherStatus: "unassigned" };
     });
 
-    // Calculate teacher load (how many classes each teacher currently teaches)
-    const existingTimetables = await Timetable.find({ year });
-    const teacherLoad = {};
-    teachers.forEach(t => {
-      teacherLoad[t._id.toString()] = {
-        name: `${t.firstName} ${t.lastName}`,
-        classes: 0,
-        subjects: t.subjects || []
-      };
-    });
-
-    existingTimetables.forEach(tt => {
-      tt.slots.forEach(slot => {
-        const teacherId = slot.teacherId.toString();
-        if (teacherLoad[teacherId]) {
-          teacherLoad[teacherId].classes += 1;
-        }
-      });
-    });
-
-    // Generate recommendations
-    const recommendations = [];
-    const subjectsWithTeachers = Object.keys(teacherSubjectMap).filter(s => subjects.includes(s));
-    const missingSubjects = subjects.filter(s => !teacherSubjectMap[s]);
-
-    if (subjectsWithTeachers.length === subjects.length) {
-      recommendations.push({
-        type: "success",
-        message: "✅ All required subjects have assigned teachers"
-      });
-    } else {
-      recommendations.push({
-        type: "warning",
-        message: `⚠️ ${missingSubjects.length} subjects missing teachers: ${missingSubjects.join(", ")}`
+    const anyUnassigned = slots.some((s) => !s.teacherId);
+    if (anyUnassigned) {
+      const missingSubjects = Array.from(new Set(slots.filter((s) => !s.teacherId).map((s) => s.subject)));
+      return res.status(409).json({
+        message: "Cannot generate Grade 6-9 timetable: missing teacher(s) for some subjects",
+        missingSubjects,
       });
     }
 
-    // Check teacher availability
-    const overloadedTeachers = Object.values(teacherLoad).filter(t => t.classes > 20);
-    if (overloadedTeachers.length > 0) {
-      recommendations.push({
-        type: "warning",
-        message: `⚠️ Teachers ${overloadedTeachers.map(t => t.name).join(", ")} are overloaded (${overloadedTeachers[0].classes} classes)`
-      });
-    } else {
-      recommendations.push({
-        type: "success",
-        message: "✅ Teacher workload is balanced"
+    const conflicts = await checkTeacherConflicts(slots, term, year);
+    if (conflicts.length > 0) {
+      return res.status(409).json({
+        message: "Teacher conflicts detected",
+        conflicts: conflicts.map((c) => ({
+          teacherId: c.teacherId,
+          day: c.day,
+          timeSlot: c.timeSlot,
+          subject: c.subject,
+          message: c.message,
+        })),
       });
     }
 
-    // Calculate balance score
-    const allClasses = Object.values(teacherLoad).map(t => t.classes);
-    const avgClasses = allClasses.reduce((a, b) => a + b, 0) / allClasses.length;
-    const variance = allClasses.reduce((sum, c) => sum + Math.pow(c - avgClasses, 2), 0) / allClasses.length;
-    const balanceScore = Math.max(0, 100 - variance);
+    const timetable = await upsertTimetable({
+      grade: gradeNum,
+      section: normalizedSection,
+      term,
+      year,
+      slots,
+      autoGenerated: true,
+    });
 
-    // Subject coverage analysis
-    const subjectCoverage = subjectsWithTeachers.map(subject => ({
-      name: subject,
-      hoursPerWeek: 2, // Default 2 hours per week
-      teachers: teacherSubjectMap[subject].length
-    }));
+    // Attendance / student list for teachers depends on ClassTeacher
+    await ClassTeacher.findOneAndUpdate(
+      { grade: gradeNum, section: normalizedSection, stream: null },
+      { teacherId: classTeacherId },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     res.json({
       success: true,
-      recommendations,
-      teacherLoad: Object.values(teacherLoad).filter(t => t.subjects.length > 0).slice(0, 5),
-      subjectCoverage,
-      balanceScore: Math.round(balanceScore),
-      stats: {
-        totalTeachers: teachers.length,
-        activeTeachers: teachers.filter(t => !t.leaveDate).length,
-        requiredSubjects: subjects.length,
-        assignedSubjects: subjectsWithTeachers.length,
-        missingSubjects: missingSubjects.length
-      }
+      timetable,
+      message: `Auto timetable Grade ${gradeNum}${normalizedSection} created (Grades 6-9)`,
     });
   } catch (err) {
-    console.error("❌ Error generating suggestions:", err.message);
-    res.status(500).json({ message: "Failed to generate suggestions" });
+    res.status(500).json({ message: err.message });
   }
+};
+
+const autoGenerateAllMiddleTimetables = async (req, res) => {
+  try {
+    const { term: termInput, year: yearInput } = req.body;
+    const termYear = parseTermYear(termInput, yearInput);
+    const term = termYear.term;
+    const year = termYear.year;
+
+    const teacherRecords = await Teacher.find({
+      $or: [{ leaveDate: { $exists: false } }, { leaveDate: null }, { leaveDate: "" }],
+    });
+    const middleTeachers = teacherRecords.filter((t) => isMiddleTeacher(t));
+    const activeTeachers = middleTeachers.length ? middleTeachers : teacherRecords.filter(Boolean);
+
+    const classes = [];
+    for (const gradeNum of [6, 7, 8, 9]) {
+      for (const section of MIDDLE_SECTIONS) {
+        classes.push({ grade: gradeNum, section });
+      }
+    }
+
+    const teacherBusy = new Map();
+    const teacherLoad = new Map();
+    const generated = [];
+    const failed = [];
+
+    const isTeacherFree = (teacherId, day, timeSlot) => {
+      const busy = teacherBusy.get(String(teacherId));
+      return !busy?.has(`${day}|${timeSlot}`);
+    };
+    const reserveTeacher = (teacherId, day, timeSlot) => {
+      const key = String(teacherId);
+      if (!teacherBusy.has(key)) teacherBusy.set(key, new Set());
+      teacherBusy.get(key).add(`${day}|${timeSlot}`);
+      teacherLoad.set(key, (teacherLoad.get(key) || 0) + 1);
+    };
+
+    for (let classIndex = 0; classIndex < classes.length; classIndex += 1) {
+      const { grade: gradeNum, section } = classes[classIndex];
+      const normalizedSection = normalizeSection(section);
+
+      const electiveSubject = getMiddleElectiveForSection(normalizedSection);
+      const skeletonSlots = buildMiddleSlots({
+        gradeNum,
+        section: normalizedSection,
+        electiveSubject,
+      });
+
+      let classTeacherId = null;
+
+      // Local scheduling buffer: do not reserve teachers globally until the class is accepted.
+      const localBusy = new Map();
+      const localLoad = new Map();
+      const isTeacherFreeLocal = (teacherId, day, timeSlot) => {
+        const key = String(teacherId);
+        const slotKey = `${day}|${timeSlot}`;
+        const globalSet = teacherBusy.get(key);
+        const localSet = localBusy.get(key);
+        return !(globalSet?.has(slotKey) || localSet?.has(slotKey));
+      };
+      const reserveTeacherLocal = (teacherId, day, timeSlot) => {
+        const key = String(teacherId);
+        const slotKey = `${day}|${timeSlot}`;
+        if (!localBusy.has(key)) localBusy.set(key, new Set());
+        localBusy.get(key).add(slotKey);
+        localLoad.set(key, (localLoad.get(key) || 0) + 1);
+      };
+
+      const slots = skeletonSlots.map((slot) => {
+        const candidates = getMiddleTeacherCandidates(slot.subject, activeTeachers);
+        const sorted = [...candidates].sort(
+          (a, b) =>
+            ((teacherLoad.get(String(a._id)) || 0) + (localLoad.get(String(a._id)) || 0)) -
+            ((teacherLoad.get(String(b._id)) || 0) + (localLoad.get(String(b._id)) || 0))
+        );
+        const chosen =
+          sorted.find((t) => isTeacherFreeLocal(t._id, slot.day, slot.timeSlot)) || null;
+
+        if (chosen) {
+          reserveTeacherLocal(chosen._id, slot.day, slot.timeSlot);
+          if (!classTeacherId && slot.subject === "English") classTeacherId = chosen._id;
+          return { ...slot, teacherId: chosen._id, teacherStatus: "assigned" };
+        }
+
+        return { ...slot, teacherId: null, teacherStatus: "unassigned" };
+      });
+
+      const anyUnassigned = slots.some((s) => !s.teacherId);
+      if (anyUnassigned) {
+        const missingSubjects = Array.from(new Set(slots.filter((s) => !s.teacherId).map((s) => s.subject)));
+        failed.push({ grade: gradeNum, section: normalizedSection, reason: `Missing teacher(s): ${missingSubjects.join(", ")}` });
+        continue;
+      }
+
+      const conflicts = await checkTeacherConflicts(slots, term, year);
+      if (conflicts.length > 0) {
+        failed.push({
+          grade: gradeNum,
+          section: normalizedSection,
+          reason: "Teacher conflicts detected for this timetable",
+        });
+        continue;
+      }
+
+      // Commit teacher reservations globally now that the class timetable is accepted.
+      slots.forEach((slot) => {
+        if (slot.teacherId) reserveTeacher(slot.teacherId, slot.day, slot.timeSlot);
+      });
+
+      const timetable = await upsertTimetable({
+        grade: gradeNum,
+        section: normalizedSection,
+        term,
+        year,
+        slots,
+        autoGenerated: true,
+      });
+
+      // Attendance / student list for teachers depends on ClassTeacher
+      if (!classTeacherId) {
+        // Fallback: first assigned teacher
+        classTeacherId = slots.find((s) => s.teacherId)?.teacherId || null;
+      }
+      await ClassTeacher.findOneAndUpdate(
+        { grade: gradeNum, section: normalizedSection, stream: null },
+        { teacherId: classTeacherId },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      generated.push({
+        id: timetable._id,
+        grade: gradeNum,
+        section: normalizedSection,
+        electiveSubject,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `Generated ${generated.length} timetable(s) for Grades 6-9`,
+      term,
+      year,
+      generated,
+      failed,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+/* -------------------- AUTO GENERATE ALL PRIMARY -------------------- */
+
+const autoGenerateAllPrimaryTimetables = async (req, res) => {
+  try {
+    const { term, year } = parseTermYear(req.body.term, req.body.year);
+
+    const teacherRecords = await Teacher.find({
+      $or: [{ leaveDate: { $exists: false } }, { leaveDate: null }, { leaveDate: "" }],
+    });
+    const allTeachers = teacherRecords.filter(isPrimaryTeacher);
+
+    const englishTeachers = allTeachers.filter((teacher) => teacher.subjects?.includes("English"));
+    if (!englishTeachers.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No English teachers available for grades 1-5",
+        term,
+        year,
+        generated: [],
+        failed: GRADE_RULES.primary.grades.flatMap((grade) =>
+          DEFAULT_PRIMARY_SECTIONS.map((section) => ({
+            grade,
+            section,
+            reason: "No English teacher available for primary classes",
+          }))
+        ),
+      });
+    }
+    if (!allTeachers.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No primary teachers available for grades 1-5",
+        term,
+        year,
+        generated: [],
+        failed: GRADE_RULES.primary.grades.flatMap((grade) =>
+          DEFAULT_PRIMARY_SECTIONS.map((section) => ({
+            grade,
+            section,
+            reason: "No class teacher available for primary classes",
+          }))
+        ),
+      });
+    }
+
+    const classes = GRADE_RULES.primary.grades.flatMap((grade) =>
+      DEFAULT_PRIMARY_SECTIONS.map((section) => ({ grade, section }))
+    );
+
+    const teacherBusy = new Map();
+    const teacherLoad = new Map();
+    const generated = [];
+    const failed = [];
+
+    const isTeacherFree = (teacherId, day, timeSlot) => {
+      const busy = teacherBusy.get(String(teacherId));
+      return !busy?.has(`${day}|${timeSlot}`);
+    };
+
+    const reserveTeacher = (teacherId, day, timeSlot) => {
+      const key = String(teacherId);
+      if (!teacherBusy.has(key)) teacherBusy.set(key, new Set());
+      teacherBusy.get(key).add(`${day}|${timeSlot}`);
+      teacherLoad.set(key, (teacherLoad.get(key) || 0) + 1);
+    };
+
+    for (let classIndex = 0; classIndex < classes.length; classIndex += 1) {
+      const classInfo = classes[classIndex];
+      const gradeNum = classInfo.grade;
+      const section = normalizeSection(classInfo.section);
+      const subjects = GRADE_SUBJECTS[gradeNum] || GRADE_SUBJECTS[1];
+      const skeletonSlots = buildPrimarySlots({
+        gradeNum,
+        section,
+        subjects,
+        classIndex,
+      });
+
+      const englishSlots = skeletonSlots.filter((slot) => slot.subject === "English");
+      const nonEnglishSlots = skeletonSlots.filter((slot) => slot.subject !== "English");
+
+      const sortedEnglishCandidates = [...englishTeachers].sort(
+        (a, b) => (teacherLoad.get(String(a._id)) || 0) - (teacherLoad.get(String(b._id)) || 0)
+      );
+      const englishTeacher = sortedEnglishCandidates.find((teacher) =>
+        englishSlots.every((slot) => isTeacherFree(teacher._id, slot.day, slot.timeSlot))
+      );
+
+      const sortedClassCandidates = [...allTeachers].sort(
+        (a, b) => (teacherLoad.get(String(a._id)) || 0) - (teacherLoad.get(String(b._id)) || 0)
+      );
+      const classTeacher = sortedClassCandidates.find((teacher) =>
+        nonEnglishSlots.every((slot) => isTeacherFree(teacher._id, slot.day, slot.timeSlot))
+      );
+
+      if (!englishTeacher || !classTeacher) {
+        const reason = !englishTeacher
+          ? "No available English teacher for required slots"
+          : "No available class teacher for required slots";
+        failed.push({
+          grade: gradeNum,
+          section,
+          reason,
+        });
+        continue;
+      }
+
+      const slots = skeletonSlots.map((slot) => ({
+        ...slot,
+        teacherId: slot.subject === "English" ? englishTeacher._id : classTeacher._id,
+        teacherStatus: "assigned",
+      }));
+
+      slots.forEach((slot) => reserveTeacher(slot.teacherId, slot.day, slot.timeSlot));
+
+      const timetable = await upsertTimetable({
+        grade: gradeNum,
+        section,
+        term,
+        year,
+        slots,
+        autoGenerated: true,
+      });
+
+      await ClassTeacher.findOneAndUpdate(
+        { grade: gradeNum, section },
+        { teacherId: classTeacher._id },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      generated.push({
+        id: timetable._id,
+        grade: gradeNum,
+        section,
+        englishTeacherId: englishTeacher._id,
+        classTeacherId: classTeacher._id,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `Generated ${generated.length} timetable(s) with conflict checks`,
+      term,
+      year,
+      generated,
+      failed,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+
+/* -------------------- EXPORTS -------------------- */
+
+export {
+  generateTimetable,
+  getTimetable,
+  getTeacherTimetable,
+  getStudentTimetable,
+  deleteTimetable,
+  updateTimetable,
+  getAllTimetables,
+  generateTimetableSuggestions,
+  generateTimetableGrade1_5,
+  generateTimetableGrade6_9,
+  autoGenerateAllPrimaryTimetables,
+  autoGenerateAllMiddleTimetables,
 };

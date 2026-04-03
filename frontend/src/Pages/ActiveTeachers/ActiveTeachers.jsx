@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminLayout from "../../Components/AdminLayout/AdminLayout";
 import {
   FaSearch,
   FaEye,
   FaEdit,
   FaUsersSlash,
   FaPlus,
-  FaArrowLeft,
 } from "react-icons/fa";
 import styles from "./ActiveTeachers.module.css";
 import axios from "axios";
@@ -55,33 +55,28 @@ const ActiveTeachers = ({ role = "admin" }) => {
     navigate("/AddTeacherPage", { state: { mode: "add", role } });
   };
 
-  const handleBack = () => navigate(-1);
-
   // 🔹 Render
   return (
-    <div className={styles.container}>
-      {/* Header */}
-      <div className={styles.header}>
-        <button className={styles.backBtn} onClick={handleBack}>
-          <FaArrowLeft /> Back
-        </button>
+    <AdminLayout title="Active Teachers" role="admin">
+      <div className={styles.container}>
+        {/* Header */}
+        <div className={styles.header}>
+          <h1>Active Teachers</h1>
 
-        <h1>Active Teachers</h1>
+          <div className={styles.headerButtons}>
+            {role === "admin" && (
+              <>
+                <button className={styles.addBtn} onClick={handleAddTeacher}>
+                  <FaPlus /> Add Teacher
+                </button>
 
-        <div className={styles.headerButtons}>
-          {role === "admin" && (
-            <>
-              <button className={styles.addBtn} onClick={handleAddTeacher}>
-                <FaPlus /> Add Teacher
-              </button>
-
-              <button className={styles.leavedBtn} onClick={handleLeavedTeachers}>
-                <FaUsersSlash /> View Leaved Teachers
-              </button>
-            </>
-          )}
+                <button className={styles.leavedBtn} onClick={handleLeavedTeachers}>
+                  <FaUsersSlash /> View Leaved Teachers
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
       {/* Search Filter */}
       <div className={styles.filters}>
@@ -148,7 +143,8 @@ const ActiveTeachers = ({ role = "admin" }) => {
           )}
         </tbody>
       </table>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

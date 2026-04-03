@@ -4,7 +4,7 @@ import axios from "axios";
 import { API_ENDPOINTS, getAuthHeaders } from "../../config/api";
 
 const days = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
-const defaultHours = ["08:00-09:00","09:00-10:00","10:00-11:00","11:00-12:00","13:00-14:00"];
+const defaultHours = ["07:30-08:20","08:20-09:10","09:10-10:20","10:40-11:30","11:30-12:20","12:30-13:30"];
 
 const AdminTimetableForm = ({ selectedClass, term, year, grade, section, editable=false }) => {
   const [hours, setHours] = useState([...defaultHours]);

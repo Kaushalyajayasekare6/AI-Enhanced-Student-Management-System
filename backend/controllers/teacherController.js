@@ -121,18 +121,30 @@ export const updateCurrentTeacher = async (req, res) => {
   }
 };
 
-// ✏️ Update teacher
+// ✏️ Update teacher (with password sync)
 export const updateTeacher = async (req, res) => {
   try {
+    const { username, password, ...teacherData } = req.body;
+    
+    // Update teacher profile
     const teacher = await Teacher.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      teacherData,
       { new: true }
     );
     if (!teacher) return res.status(404).json({ message: "Teacher not found" });
+
+    // Sync password to User if provided
+    if (username && password) {
+      const { updateUserPassword } = await import('./authController.js');
+      await updateUserPassword(username, password);
+    }
+
     res.json(teacher);
   } catch (err) {
+    console.error("❌ Error updating teacher:", err.message);
     res.status(500).json({ message: err.message });
   }
 };
+
 

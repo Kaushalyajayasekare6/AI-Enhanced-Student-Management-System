@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import AdminLayout from "../../Components/AdminLayout/AdminLayout";
 import styles from "./AdminAssignClassTeachers.module.css";
 import axios from "axios";
 import { API_ENDPOINTS, getAuthHeaders } from "../../config/api";
@@ -80,122 +81,124 @@ const AdminAssignClassTeachers = () => {
   };
 
   return (
-    <div className={styles.container}>
-      <h2 className={styles.title}>Assign Class Teachers</h2>
+    <AdminLayout title="Assign Class Teachers" role="admin">
+      <div className={styles.container}>
+        <h2 className={styles.title}>Assign Class Teachers</h2>
 
-      <div className={styles.formGrid}>
-        {/* Grade */}
-        <div className={styles.formGroup}>
-          <label>Grade</label>
-          <select
-            value={selectedGrade}
-            onChange={(e) => {
-              setSelectedGrade(e.target.value);
-              setSelectedStream("");
-              setSelectedSection("");
-            }}
-          >
-            <option value="">Select Grade</option>
-            {grades.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Section */}
-        {parseInt(selectedGrade) < 12 && (
+        <div className={styles.formGrid}>
+          {/* Grade */}
           <div className={styles.formGroup}>
-            <label>Section</label>
+            <label>Grade</label>
             <select
-              value={selectedSection}
-              onChange={(e) => setSelectedSection(e.target.value)}
+              value={selectedGrade}
+              onChange={(e) => {
+                setSelectedGrade(e.target.value);
+                setSelectedStream("");
+                setSelectedSection("");
+              }}
             >
-              <option value="">Select Section</option>
-              {sections.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              <option value="">Select Grade</option>
+              {grades.map((g) => (
+                <option key={g} value={g}>
+                  {g}
                 </option>
               ))}
             </select>
           </div>
-        )}
 
-        {/* Stream (only 12–13) */}
-        {parseInt(selectedGrade) >= 12 && (
+          {/* Section */}
+          {parseInt(selectedGrade) < 12 && (
+            <div className={styles.formGroup}>
+              <label>Section</label>
+              <select
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+              >
+                <option value="">Select Section</option>
+                {sections.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Stream (only 12–13) */}
+          {parseInt(selectedGrade) >= 12 && (
+            <div className={styles.formGroup}>
+              <label>Stream</label>
+              <select
+                value={selectedStream}
+                onChange={(e) => setSelectedStream(e.target.value)}
+              >
+                <option value="">Select Stream</option>
+                {streams.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Teacher */}
           <div className={styles.formGroup}>
-            <label>Stream</label>
+            <label>Teacher</label>
             <select
-              value={selectedStream}
-              onChange={(e) => setSelectedStream(e.target.value)}
+              value={selectedTeacher}
+              onChange={(e) => setSelectedTeacher(e.target.value)}
             >
-              <option value="">Select Stream</option>
-              {streams.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              <option value="">Select Teacher</option>
+              {teachers.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.firstName} {t.lastName}
                 </option>
               ))}
             </select>
           </div>
-        )}
 
-        {/* Teacher */}
-        <div className={styles.formGroup}>
-          <label>Teacher</label>
-          <select
-            value={selectedTeacher}
-            onChange={(e) => setSelectedTeacher(e.target.value)}
-          >
-            <option value="">Select Teacher</option>
-            {teachers.map((t) => (
-              <option key={t._id} value={t._id}>
-                {t.firstName} {t.lastName}
-              </option>
-            ))}
-          </select>
+          <button onClick={handleAssign} className={styles.assignBtn}>
+            Assign Teacher
+          </button>
         </div>
 
-        <button onClick={handleAssign} className={styles.assignBtn}>
-          Assign Teacher
-        </button>
-      </div>
-
-      {/* Table */}
-      <div className={styles.tableWrapper}>
-        <h3>Assigned Classes</h3>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Grade</th>
-              <th>Section</th>
-              <th>Stream</th>
-              <th>Teacher</th>
-            </tr>
-          </thead>
-          <tbody>
-            {assignments.length > 0 ? (
-              assignments.map((a, i) => (
-                <tr key={i}>
-                  <td>{a.grade}</td>
-                  <td>{a.section}</td>
-                  <td>{a.stream || "-"}</td>
-                  <td>
-                    {a.teacherId?.firstName} {a.teacherId?.lastName}
+        {/* Table */}
+        <div className={styles.tableWrapper}>
+          <h3>Assigned Classes</h3>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Grade</th>
+                <th>Section</th>
+                <th>Stream</th>
+                <th>Teacher</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assignments.length > 0 ? (
+                assignments.map((a, i) => (
+                  <tr key={i}>
+                    <td>{a.grade}</td>
+                    <td>{a.section}</td>
+                    <td>{a.stream || "-"}</td>
+                    <td>
+                      {a.teacherId?.firstName} {a.teacherId?.lastName}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className={styles.empty}>
+                    No classes assigned yet.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" className={styles.empty}>
-                  No classes assigned yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

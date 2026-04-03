@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import Sidebar from "../../Components/Sidebar/Sidebar";
-import Header from "../../Components/Header/Header";
+import StudentLayout from "../../Components/StudentLayout/StudentLayout";
 import NoticeBoard from "../../Components/NoticeBoard/NoticeBoard";
 import styles from "./StudentDashboard.module.css";
 import { getStoredRole } from "../../utils/auth";
@@ -138,66 +137,58 @@ const StudentDashboard = () => {
 
   if (loading) {
     return (
-      <div className={styles.page}>
-        <Sidebar role={role} />
-        <main className={styles.main}>
-          <Header title="Student Dashboard" />
-          <p>Loading dashboard...</p>
-        </main>
-      </div>
+      <StudentLayout title="Student Dashboard" role={role}>
+        <p>Loading dashboard...</p>
+      </StudentLayout>
     );
   }
 
   return (
-    <div className={styles.page}>
-      <Sidebar role={role} />
-      <main className={styles.main}>
-        <Header title="Student Dashboard" />
+    <StudentLayout title="Student Dashboard" role={role}>
+      {/* Notice Board */}
+      <NoticeBoard />
 
-        {/* Notice Board */}
-        <NoticeBoard />
-
-        {/* Top Stats */}
-        <div className={styles.statsGrid}>
-          <div className={styles.statsCard}>
-            <div className={styles.statTitle}>Attendance</div>
-            <div className={styles.statValue}>{stats.attendancePercent}%</div>
-            <div className={styles.statNote}>
-              {stats.totalSchoolDays > 0 
-                ? `${stats.presentDays} / ${stats.totalSchoolDays} days`
-                : "No records"}
-            </div>
-          </div>
-
-          <div className={styles.statsCard}>
-            <div className={styles.statTitle}>Average Marks</div>
-            <div className={styles.statValue}>{stats.avgMarks}%</div>
-            <div className={styles.statNote}>
-              {marks.length > 0 ? "From all subjects" : "No marks recorded"}
-            </div>
-          </div>
-
-          <div className={styles.statsCard}>
-            <div className={styles.statTitle}>Dropout Risk</div>
-            <div
-              className={`${styles.statValue} ${
-                stats.riskLevel === "High"
-                  ? styles.high
-                  : stats.riskLevel === "Medium"
-                  ? styles.medium
-                  : styles.low
-              }`}
-            >
-              {stats.riskLevel}
-            </div>
-            <div className={styles.statNote}>Based on attendance & marks</div>
+      {/* Top Stats */}
+      <div className={styles.statsGrid}>
+        <div className={styles.statsCard}>
+          <div className={styles.statTitle}>Attendance</div>
+          <div className={styles.statValue}>{stats.attendancePercent}%</div>
+          <div className={styles.statNote}>
+            {stats.totalSchoolDays > 0 
+              ? `${stats.presentDays} / ${stats.totalSchoolDays} days`
+              : "No records"}
           </div>
         </div>
 
-        {/* Low Marks Subjects */}
-        {lowSubjects.length > 0 && (
-          <div className={styles.section}>
-            <h3>Subjects Needing Attention</h3>
+        <div className={styles.statsCard}>
+          <div className={styles.statTitle}>Average Marks</div>
+          <div className={styles.statValue}>{stats.avgMarks}%</div>
+          <div className={styles.statNote}>
+            {marks.length > 0 ? "From all subjects" : "No marks recorded"}
+          </div>
+        </div>
+
+        <div className={styles.statsCard}>
+          <div className={styles.statTitle}>Dropout Risk</div>
+          <div
+            className={`${styles.statValue} ${
+              stats.riskLevel === "High"
+                ? styles.high
+                : stats.riskLevel === "Medium"
+                ? styles.medium
+                : styles.low
+            }`}
+          >
+            {stats.riskLevel}
+          </div>
+          <div className={styles.statNote}>Based on attendance & marks</div>
+        </div>
+      </div>
+
+      {/* Low Marks Subjects */}
+      {lowSubjects.length > 0 && (
+        <div className={styles.section}>
+          <h3>Subjects Needing Attention</h3>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -218,8 +209,7 @@ const StudentDashboard = () => {
             </table>
           </div>
         )}
-      </main>
-    </div>
+    </StudentLayout>
   );
 };
 

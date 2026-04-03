@@ -12,16 +12,19 @@ import {
   Legend,
 } from "recharts";
 
-const StudentMarks = ({ view, year, term, searchSubject }) => {
+const StudentMarks = ({ view = "term", year, term, searchSubject, studentId }) => {
   const [marksData, setMarksData] = useState({});
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [predictions, setPredictions] = useState(null);
+  const [predictionsByTerm, setPredictionsByTerm] = useState({});
   const [predictionLoading, setPredictionLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState(null);
 
   // Helper function to format subject names
   const formatSubjectName = (subjectKey) => {
+    if (subjectKey === "assignmentPercentage") return "Assignment %";
     // Convert snake_case or camelCase to Title Case
     return subjectKey
       .replace(/([A-Z])/g, ' $1') // Add space before capital letters
@@ -32,6 +35,11 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
       .trim();
   };
 
+  const isAssignmentSubject = (subjectNameOrKey = "") => {
+    const value = String(subjectNameOrKey).toLowerCase();
+    return value === "assignment %" || value === "assignmentpercentage";
+  };
+
   // Fetch student marks data
   useEffect(() => {
     const fetchMarksData = async () => {
@@ -39,12 +47,15 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
         setLoading(true);
         setError(null);
         
-        // Use the MY_MARKS endpoint to get current student's marks
-        const marksRes = await axios.get(API_ENDPOINTS.MARKS.MY_MARKS, {
+        // Use MY_MARKS or STUDENT endpoint based on studentId prop (teacher context)
+        const marksEndpoint = studentId ? 
+          `${API_ENDPOINTS.MARKS.STUDENT}?studentId=${studentId}&year=${Number(year)}` :
+          API_ENDPOINTS.MARKS.MY_MARKS;
+        const marksRes = await axios.get(marksEndpoint, {
           headers: getAuthHeaders(),
         });
         
-        const { student, marks, subjects } = marksRes.data;
+        const { student, marks } = marksRes.data;
         
         if (student) {
           setStudentData(student);
@@ -95,39 +106,89 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
     fetchMarksData();
   }, [year, term]);
 
-  // Fetch ML predictions
+  // Fetch ML predictions (only for grade 1-5) using student marks from DB
   useEffect(() => {
+    const fetchTermPredictions = async (studentId) => {
+      const predictedList = {};
+
+      // Attempt to fetch term-based predictions for Term 2 and Term 3
+      for (const predictTerm of [2, 3]) {
+        try {
+          const termPredictionRes = await axios.post(
+            API_ENDPOINTS.ML.PREDICT_TERM_MARKS,
+            { studentId, predictTerm, year: Number(year) },
+            { headers: getAuthHeaders() }
+          );
+          if (termPredictionRes.data && termPredictionRes.data.success !== false) {
+            predictedList[String(predictTerm)] = termPredictionRes.data;
+          }
+        } catch (termError) {
+          console.warn(`Term ${predictTerm} prediction unavailable:`, termError);
+        }
+      }
+
+      setPredictionsByTerm(predictedList);
+    };
+
     const fetchPredictions = async () => {
       try {
+        setPredictionError(null);
         setPredictionLoading(true);
-        const predictionRes = await axios.post(
-          API_ENDPOINTS.ML.PREDICT_MARKS,
-          {
-            year: Number(year),
-            term: Number(term),
-          },
-          {
-            headers: getAuthHeaders(),
-          }
-        );
+
+        if (!studentData || !studentData.grade) {
+          setPredictionError("Student grade not available for prediction");
+          setPredictions(null);
+          setPredictionsByTerm({});
+          return;
+        }
+
+        const gradeMatch = String(studentData.grade).match(/(\d+)/);
+        const gradeValue = gradeMatch ? Number(gradeMatch[1]) : null;
+
+        if (!gradeValue || gradeValue < 1 || gradeValue > 5) {
+          setPredictionError("Marks prediction is supported only for grades 1 to 5.");
+          setPredictions(null);
+          setPredictionsByTerm({});
+          return;
+        }
+
+        const studentId = studentData.id || studentData._id;
+        const body = {
+          studentId,
+          year: Number(year),
+          term: Number(term),
+        };
+
+        const predictionRes = await axios.post(API_ENDPOINTS.ML.PREDICT_MARKS, body, {
+          headers: getAuthHeaders(),
+        });
+
+        if (predictionRes.data && predictionRes.data.success === false) {
+          throw new Error(predictionRes.data.message || "Prediction failed");
+        }
+
         setPredictions(predictionRes.data);
+        await fetchTermPredictions(studentId);
       } catch (err) {
         console.error("Error fetching predictions:", err);
-        // Don't show error to user if ML service is unavailable
-        if (err.response?.status !== 503) {
-          console.warn("ML prediction unavailable:", err.message);
-        }
+        const errMsg =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.message ||
+          "Unable to fetch predictions";
+        setPredictionError(errMsg);
         setPredictions(null);
+        setPredictionsByTerm({});
       } finally {
         setPredictionLoading(false);
       }
     };
 
-    // Only fetch predictions if we have marks data
-    if (!loading && marksData && Object.keys(marksData).length > 0) {
+    // Fetch predictions once student data is loaded (don't wait for marksData)
+    if (!loading && studentData) {
       fetchPredictions();
     }
-  }, [year, term, loading, marksData]);
+  }, [year, term, loading, studentData]);
 
   const termsToShow = view === "year" ? ["1", "2", "3"] : [String(term)];
   
@@ -151,7 +212,13 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
 
   const filtered = subjects.filter((s) =>
     s.toLowerCase().includes(searchSubject.toLowerCase())
-  );
+  ).sort((a, b) => {
+    const aAssign = isAssignmentSubject(a);
+    const bAssign = isAssignmentSubject(b);
+    if (aAssign && !bAssign) return 1;
+    if (!aAssign && bAssign) return -1;
+    return a.localeCompare(b);
+  });
 
   // -------- Term-wise totals & averages for all subjects ----------
   const termSummary = termsToShow.map((t) => {
@@ -161,9 +228,10 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
       ? termMarks.filter(m => !year || !m.year || Number(m.year) === Number(year))
       : [];
     
-    const total = filteredMarks.reduce((sum, subj) => sum + (subj.marks || 0), 0);
-    const avg = filteredMarks.length > 0
-      ? Math.round(total / filteredMarks.length)
+    const academicMarks = filteredMarks.filter((subj) => !isAssignmentSubject(subj.subject));
+    const total = academicMarks.reduce((sum, subj) => sum + (subj.marks || 0), 0);
+    const avg = academicMarks.length > 0
+      ? Math.round(total / academicMarks.length)
       : 0;
 
     return {
@@ -174,24 +242,77 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
     };
   });
 
-  // -------- Subject summaries (only for table display) -----------
-  const summary = filtered.map((subj) => {
-    const vals = termsToShow.map((t) => {
-      const termMarks = marksData[t] || [];
-      const found = Array.isArray(termMarks)
-        ? termMarks.find((x) => {
-            // Match subject and filter by year if provided
-            const subjectMatch = x.subject === subj;
-            const yearMatch = !year || !x.year || Number(x.year) === Number(year);
-            return subjectMatch && yearMatch;
-          })
-        : null;
-      return found ? found.marks : 0;
-    });
-    const total = vals.reduce((a, b) => a + b, 0);
-    const avg = vals.some(v => v > 0) ? Math.round(total / vals.filter(v => v > 0).length) : 0;
-    return { subject: subj, total, avg };
-  });
+  const subjectMapping = {
+    maths: 'math',
+    math: 'math',
+    science: 'env',
+    environment: 'env',
+    religious: 'religion',
+    religion: 'religion',
+    sinhala: 'sinhala',
+    tamil: 'tamil',
+    english: 'english',
+  };
+
+  const normalizeSubjectKey = (subjectName) => {
+    if (!subjectName) return '';
+    return subjectName.toString().trim().toLowerCase().replace(/\s+/g, '').replace('%', '');
+  };
+
+  const getPredictionFromObject = (subjectName, pred) => {
+    if (!pred || typeof pred !== 'object') return null;
+
+    const subjectLower = normalizeSubjectKey(subjectName);
+    const mlKey = subjectMapping[subjectLower] || subjectLower;
+
+    // Try direct key and variants
+    const candidates = [mlKey, subjectLower, subjectName, subjectName.toLowerCase(), subjectName.toUpperCase()];
+
+    for (const key of candidates) {
+      if (key && pred[key] !== undefined && pred[key] !== null) {
+        const value = pred[key];
+        return typeof value === 'object' ? value.predicted ?? value.value ?? null : value;
+      }
+    }
+
+    for (const key of Object.keys(pred)) {
+      if (key.toLowerCase().includes(subjectLower) || subjectLower.includes(key.toLowerCase())) {
+        const value = pred[key];
+        return typeof value === 'object' ? value.predicted ?? value.value ?? null : value;
+      }
+    }
+
+    return null;
+  };
+
+  const getPredictionForSubject = (subjectName, termKey) => {
+    const termNum = Number(termKey);
+    // Term 1 is not predicted; predictions can only be term 2/3
+    if (termNum === 1) return null;
+
+    // Prefer term-based ML endpoint (predict-term-marks) for term 2/3
+    const termPred = predictionsByTerm?.[String(termKey)];
+    if (termPred) {
+      const termData = termPred.predicted_marks || termPred.prediction || termPred;
+      const termValue = getPredictionFromObject(subjectName, termData);
+      if (termValue !== null && termValue !== undefined) {
+        return termValue;
+      }
+    }
+
+    // If term-based data is not available, use the current insurance path for the selected term
+    const selectedTermKey = String(term);
+    if (String(termKey) === selectedTermKey && predictions) {
+      return getPredictionFromObject(subjectName, predictions.predicted_marks || predictions.prediction);
+    }
+
+    // Fallback: if predictions has general data
+    if (predictions) {
+      return getPredictionFromObject(subjectName, predictions.predicted_marks || predictions.prediction);
+    }
+
+    return null;
+  };
 
   // -------- Charts data per subject ------------------------------
   const subjectCharts = filtered.map((s) => ({
@@ -206,105 +327,42 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
             return subjectMatch && yearMatch;
           })
         : null;
+      const actual = found?.marks || 0;
+      const predicted = getPredictionForSubject(s, t);
       return {
         term: `Term ${t}`,
-        Marks: found?.marks || 0,
+        Actual: actual,
+        Predicted: predicted !== null && predicted !== undefined ? predicted : null,
       };
     }),
   }));
 
-  if (loading) {
-    return <div className={styles.tableWrapper}><p>Loading marks data...</p></div>;
-  }
-
-  if (error) {
-    return <div className={styles.tableWrapper}><p className={styles.error}>{error}</p></div>;
-  }
-
-  // Map predictions to subjects (ML model returns predictions for specific subjects)
-  const getPredictionForSubject = (subjectName, currentMark) => {
-    if (!predictions) return null;
-    
-    // Try multiple sources for predictions
-    const pred = predictions.predicted_marks || predictions.prediction;
-    if (!pred) return null;
-    
-    const subjectLower = subjectName.toLowerCase();
-    
-    // Check for main 5 subjects
-    if (subjectLower.includes("english")) {
-      const data = pred.english;
-      return data ? (typeof data === 'object' ? data.predicted : data) : null;
-    }
-    if (subjectLower.includes("math")) {
-      const data = pred.math;
-      return data ? (typeof data === 'object' ? data.predicted : data) : null;
-    }
-    if (subjectLower.includes("sinhala")) {
-      const data = pred.sinhala;
-      return data ? (typeof data === 'object' ? data.predicted : data) : null;
-    }
-    if (subjectLower.includes("tamil")) {
-      const data = pred.tamil;
-      return data ? (typeof data === 'object' ? data.predicted : data) : null;
-    }
-    if (subjectLower.includes("science") || subjectLower.includes("environment")) {
-      const data = pred.env;
-      return data ? (typeof data === 'object' ? data.predicted : data) : null;
-    }
-    
-    // For other subjects without ML predictions, estimate based on current mark and average improvement
-    if (currentMark && currentMark > 0 && predictions.predicted_marks) {
-      // Calculate average improvement from the 5 main subjects
-      const mainSubjects = ['english', 'math', 'sinhala', 'tamil', 'env'];
-      const improvements = [];
-      
-      mainSubjects.forEach(subj => {
-        const data = pred[subj];
-        if (data) {
-          const curr = predictions.input_marks?.[subj] || predictions.inputData?.[subj] || 50;
-          const pred_val = typeof data === 'object' ? data.predicted : data;
-          improvements.push(pred_val - curr);
-        }
-      });
-      
-      const avgImprovement = improvements.length > 0 
-        ? improvements.reduce((a, b) => a + b, 0) / improvements.length 
-        : 2;
-      
-      const estimated = currentMark + avgImprovement;
-      return Math.max(0, Math.min(100, estimated));
-    }
-    
-    return null;
-  };
-
   return (
     <div>
       {/* ML Predictions Card - Improved UI */}
-      {predictions && (predictions.predicted_marks || predictions.prediction) && (
+      {predictionError && (
+        <div className={styles.error} style={{ marginBottom: '1rem' }}>
+          {predictionError}
+        </div>
+      )}
+
+      {predictions && (predictions.predicted_marks || predictions.prediction) ? (
         <div className={styles.predictionCard}>
           <h3>📊 Predicted Marks vs Current Marks</h3>
           {predictionLoading ? (
             <p>Loading predictions...</p>
           ) : (
-            <div className={styles.comparisonTable}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f0f0f0', borderBottom: '2px solid #333' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Subject</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#2c3e50' }}>
-                      Current
-                    </th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#27ae60' }}>
-                      Predicted
-                    </th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#3498db' }}>
-                      Change
-                    </th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>Trend</th>
-                  </tr>
-                </thead>
+            <div>
+            <table className={styles.predictionTable}>
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th style={{ textAlign: 'center', color: '#2c3e50' }}>Current</th>
+                  <th style={{ textAlign: 'center', color: '#27ae60' }}>Predicted</th>
+                  <th style={{ textAlign: 'center', color: '#3498db' }}>Change</th>
+                  <th style={{ textAlign: 'center' }}>Trend</th>
+                </tr>
+              </thead>
                 <tbody>
                   {filtered && filtered.length > 0 && filtered.map((subject) => {
                     // Get current marks for this subject
@@ -313,70 +371,50 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
                       ? termMarks.find(m => m.subject === subject)?.marks || 0
                       : 0;
                     
-                    // Get prediction from ML response
-                    const pred = predictions.predicted_marks || predictions.prediction;
-                    let predicted = null;
-                    let trend = '→';
-                    
-                    if (pred) {
-                      const subjectLower = subject.toLowerCase();
-                      if (subjectLower.includes("english") && pred.english) {
-                        predicted = typeof pred.english === 'object' ? pred.english.predicted : pred.english;
-                        trend = typeof pred.english === 'object' ? pred.english.trend : '→';
-                      } else if (subjectLower.includes("math") && pred.math) {
-                        predicted = typeof pred.math === 'object' ? pred.math.predicted : pred.math;
-                        trend = typeof pred.math === 'object' ? pred.math.trend : '→';
-                      } else if (subjectLower.includes("sinhala") && pred.sinhala) {
-                        predicted = typeof pred.sinhala === 'object' ? pred.sinhala.predicted : pred.sinhala;
-                        trend = typeof pred.sinhala === 'object' ? pred.sinhala.trend : '→';
-                      } else if (subjectLower.includes("tamil") && pred.tamil) {
-                        predicted = typeof pred.tamil === 'object' ? pred.tamil.predicted : pred.tamil;
-                        trend = typeof pred.tamil === 'object' ? pred.tamil.trend : '→';
-                      } else if ((subjectLower.includes("science") || subjectLower.includes("environment")) && pred.env) {
-                        predicted = typeof pred.env === 'object' ? pred.env.predicted : pred.env;
-                        trend = typeof pred.env === 'object' ? pred.env.trend : '→';
-                      }
-                    }
-                    
-                    const displayPredicted = predicted !== null ? Math.round(predicted) : Math.round(currentMark);
-                    const change = displayPredicted - currentMark;
+                    // Get prediction from ML response (for selected term)
+                    const predicted = getPredictionForSubject(subject, String(term));
+                    const change = predicted !== null ? predicted - currentMark : 0;
                     const hasMLPrediction = predicted !== null;
                     
-                    // Determine color based on trend
+                    // Determine trend based on change
+                    let trend = 'stable';
                     let trendColor = '#95a5a6';
                     let trendEmoji = '→';
-                    if (trend === 'improvement') {
+                    
+                    if (change > 5) {
+                      trend = 'improvement';
                       trendColor = '#27ae60';
                       trendEmoji = '📈';
-                    } else if (trend === 'decline') {
+                    } else if (change < -5) {
+                      trend = 'decline';
                       trendColor = '#e74c3c';
                       trendEmoji = '📉';
                     } else {
+                      trend = 'stable';
                       trendColor = '#f39c12';
                       trendEmoji = '→';
                     }
                     
                     return (
-                      <tr key={subject} style={{ borderBottom: '1px solid #ecf0f1' }}>
-                        <td style={{ padding: '12px', fontWeight: '500' }}>{subject}</td>
-                        <td style={{ padding: '12px', textAlign: 'center', color: '#2c3e50', fontSize: '16px', fontWeight: 'bold' }}>
+                      <tr key={subject}>
+                        <td style={{ fontWeight: '500' }}>{subject}</td>
+                        <td style={{ textAlign: 'center', color: '#2c3e50', fontSize: '16px', fontWeight: 'bold' }}>
                           {Math.round(currentMark)}
                         </td>
-                        <td style={{ padding: '12px', textAlign: 'center', color: '#27ae60', fontSize: '16px', fontWeight: 'bold' }}>
-                          {displayPredicted}
+                        <td style={{ textAlign: 'center', color: '#27ae60', fontSize: '16px', fontWeight: 'bold' }}>
+                          {hasMLPrediction ? Math.round(predicted) : 'N/A'}
                         </td>
                         <td style={{ 
-                          padding: '12px', 
                           textAlign: 'center', 
                           color: change > 0 ? '#27ae60' : (change < 0 ? '#e74c3c' : '#95a5a6'),
                           fontSize: '14px',
                           fontWeight: 'bold'
                         }}>
-                          {change > 0 ? '+' : ''}{change}
+                          {hasMLPrediction ? (change > 0 ? '+' : '') + Math.round(change) : '-'}
                         </td>
-                        <td style={{ padding: '12px', textAlign: 'center', color: trendColor, fontSize: '16px' }}>
+                        <td style={{ textAlign: 'center', color: trendColor, fontSize: '16px' }}>
                           {trendEmoji} {trend}
-                          {!hasMLPrediction && <span style={{ fontSize: '12px' }}> (est.)</span>}
+                          {!hasMLPrediction && <span style={{ fontSize: '12px' }}> (no data)</span>}
                         </td>
                       </tr>
                     );
@@ -384,30 +422,47 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
                 </tbody>
               </table>
               
-              {(predictions.input_marks || predictions.inputData) && (
+              {predictions && predictions.input_marks && (
                 <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#ecf0f1', borderRadius: '5px' }}>
                   <p style={{ marginBottom: '10px', fontWeight: 'bold' }}>Based on Current Marks:</p>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '14px' }}>
-                    <div>English: {(predictions.input_marks || predictions.inputData).english}</div>
-                    <div>Math: {(predictions.input_marks || predictions.inputData).math}</div>
-                    <div>Sinhala: {(predictions.input_marks || predictions.inputData).sinhala}</div>
-                    <div>Tamil: {(predictions.input_marks || predictions.inputData).tamil}</div>
-                    <div>Science/Env: {(predictions.input_marks || predictions.inputData).env}</div>
-                    <div>Attendance: {(predictions.input_marks || predictions.inputData).attendance}%</div>
+                    <div>English: {predictions.input_marks.english}</div>
+                    <div>Math: {predictions.input_marks.math}</div>
+                    <div>Sinhala: {predictions.input_marks.sinhala}</div>
+                    <div>Tamil: {predictions.input_marks.tamil}</div>
+                    <div>Science/Env: {predictions.input_marks.env}</div>
+                    <div>Religion: {predictions.input_marks.religion}</div>
+                    <div>Attendance: {predictions.input_marks.attendance}%</div>
                   </div>
-                </div>
-              )}
+                </div> )}
             </div>
-          )}
+            )}
+          {/* Debug: Raw ML Response - commented out for now */}
+          {/* <div style={{marginTop: '1rem', padding: '0.75rem', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px'}}>
+            <strong>🔍 Raw ML Response:</strong>
+            <pre style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.75rem', marginTop: '0.5rem', maxHeight: '200px', overflow: 'auto'}}>
+              {JSON.stringify(predictions, null, 2)}
+            </pre>
+          </div> */}
         </div>
-      )}
-
-      {/* Table for subjects */}
+      ) : predictions && !predictionError ? (
+        <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#fff3cd', border: '1px solid #ffc107', borderRadius: '8px' }}>
+          <strong>⚠️ No prediction data found in response.</strong><br />
+          <small>Expected: `predicted_marks` or `prediction`. Received fields: {Object.keys(predictions || {}).join(', ')}</small>
+          <details style={{marginTop: '0.5rem'}}>
+            <summary>Show raw response</summary>
+            <pre style={{fontSize: '0.7rem', marginTop: '0.5rem', backgroundColor: '#f9f9f9', padding: '0.5rem', borderRadius: '4px'}}>
+              {JSON.stringify(predictions, null, 2)}
+            </pre>
+          </details>
+        </div>
+       ) : null}
       <div className={styles.tableWrapper}>
         <table id="marks-table" className={styles.table}>
           <thead>
             <tr style={{ backgroundColor: '#34495e', color: 'white' }}>
               <th style={{ padding: '15px', textAlign: 'left', fontWeight: 'bold' }}>Subject</th>
+              <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold' }}>Class</th>
               {termsToShow.map((t) => (
                 <th key={t} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold' }}>
                   Term {t}
@@ -419,14 +474,12 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
               <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#2980b9' }}>
                 Predicted
               </th>
-              <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold' }}>Total</th>
-              <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold' }}>Average</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={termsToShow.length + 5} style={{ textAlign: 'center', padding: '20px', color: '#7f8c8d' }}>
+                <td colSpan={termsToShow.length + 4} style={{ textAlign: 'center', padding: '20px', color: '#7f8c8d' }}>
                   No subjects found
                 </td>
               </tr>
@@ -450,10 +503,9 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
                   ? termMarks.find(m => m.subject === subj)?.marks || 0
                   : 0;
                 
-                const total = summary.find((s) => s.subject === subj)?.total ?? "-";
-                const avg = summary.find((s) => s.subject === subj)?.avg ?? "-";
-                const predicted = getPredictionForSubject(subj, currentMark);
+                const predicted = getPredictionForSubject(subj, String(term));
                 
+                const isAssignment = isAssignmentSubject(subj);
                 const predictionColor = predicted && predicted > currentMark ? '#27ae60' : (predicted && predicted < currentMark ? '#e74c3c' : '#95a5a6');
                 
                 return (
@@ -466,6 +518,9 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = (idx % 2 === 0 ? '#ffffff' : '#f8f9fa')}
                   >
                     <td style={{ padding: '12px', fontWeight: '600', color: '#2c3e50' }}>{subj}</td>
+                    <td style={{ padding: '12px', textAlign: 'center', color: '#34495e' }}>
+                      {studentData ? `${studentData.grade || "N/A"}${studentData.section ? ` ${studentData.section}` : ""}` : "N/A"}
+                    </td>
                     {rowTotals.map((v, i) => (
                       <td key={i} style={{ padding: '12px', textAlign: 'center', color: '#34495e' }}>
                         {v !== "-" ? <span style={{ fontWeight: '500' }}>{v}</span> : "-"}
@@ -491,13 +546,7 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
                       borderRadius: '5px',
                       fontSize: '15px'
                     }}>
-                      {predicted !== null ? Math.round(predicted) : "-"}
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center', color: '#34495e' }}>
-                      {total !== "-" ? <span style={{ fontWeight: '500' }}>{total}</span> : "-"}
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center', color: '#34495e' }}>
-                      {avg !== "-" ? <span style={{ fontWeight: '500' }}>{avg}</span> : "-"}
+                      {isAssignment ? "N/A" : (predicted !== null ? Math.round(predicted) : "-")}
                     </td>
                   </tr>
                 );
@@ -535,14 +584,18 @@ const StudentMarks = ({ view, year, term, searchSubject }) => {
       {/* Charts for each subject */}
       {subjectCharts.map((subj, idx) => (
         <div key={idx} className={styles.chartCard}>
-          <h4>{subj.subject} — Progress Over Terms</h4>
+          <h4>
+            {subj.subject}
+            {isAssignmentSubject(subj.subject) ? " — Assignment Completion %" : " — Progress Over Terms"}
+          </h4>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={subj.terms}>
               <XAxis dataKey="term" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="Marks" fill="#2563eb" />
+              <Bar dataKey="Actual" fill={isAssignmentSubject(subj.subject) ? "#f59e0b" : "#2563eb"} />
+              <Bar dataKey="Predicted" fill="#27ae60" />
             </BarChart>
           </ResponsiveContainer>
         </div>

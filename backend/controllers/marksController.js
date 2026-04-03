@@ -3,154 +3,122 @@ import Marks from "../models/Marks.js";
 import User from "../models/User.js";
 import { getSubjectsByGrade } from "../utils/subjectUtils.js";
 
+// Helper to persist a single student's marks and keep student terms in sync
+const upsertSingleMarks = async ({ studentId, year, term, marks }, teacherId) => {
+  if (!studentId || year === undefined || term === undefined || !marks || typeof marks !== 'object' || Array.isArray(marks)) {
+    throw new Error('Invalid upsert payload');
+  }
+
+  const yearNum = Number(year);
+  const termNum = Number(term);
+  if (isNaN(yearNum) || isNaN(termNum) || ![1,2,3].includes(termNum)) {
+    throw new Error('Invalid year or term');
+  }
+
+  const student = await Student.findById(studentId);
+  if (!student) {
+    const ex = new Error('Student not found');
+    ex.status = 404;
+    throw ex;
+  }
+
+  const { gradeCategory } = getSubjectsByGrade(student.grade);
+  if (gradeCategory === 'unknown') {
+    const ex = new Error(`Invalid grade: ${student.grade}`);
+    ex.status = 400;
+    throw ex;
+  }
+
+  const cleanedMarks = {};
+  Object.keys(marks).forEach(key => {
+    const value = marks[key];
+    if (value !== null && value !== undefined && value !== '') {
+      const numValue = Number(value);
+      if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+        cleanedMarks[key] = numValue;
+      }
+    }
+  });
+
+  if (Object.keys(cleanedMarks).length === 0) {
+    const ex = new Error('At least one valid mark (0-100) must be provided');
+    ex.status = 400;
+    throw ex;
+  }
+
+  let marksRecord = await Marks.findOne({ studentId, year: yearNum, term: termNum });
+  if (marksRecord) {
+    marksRecord.marks = cleanedMarks;
+    marksRecord.gradeLevel = gradeCategory;
+    await marksRecord.save();
+  } else {
+    marksRecord = new Marks({ studentId, teacherId, year: yearNum, term: termNum, marks: cleanedMarks, gradeLevel: gradeCategory });
+    await marksRecord.save();
+  }
+
+  if (!student.terms) student.terms = [];
+  const existingTerm = student.terms.find(t => t.year === yearNum && t.term === termNum);
+  if (existingTerm) {
+    existingTerm.marks = cleanedMarks;
+  } else {
+    student.terms.push({ year: yearNum, term: termNum, marks: cleanedMarks });
+  }
+  await student.save();
+
+  return marksRecord;
+};
+
 // ➕ Add or update marks for a student
 export const upsertMarks = async (req, res) => {
   try {
-    const { studentId, year, term, marks } = req.body;
-    
-    // Validate authentication
     if (!req.user || !req.user.id) {
-      return res.status(401).json({ message: "Unauthorized: User not authenticated" });
+      return res.status(401).json({ message: 'Unauthorized: User not authenticated' });
     }
-    
+
     const teacherId = req.user.id;
+    const { studentId, year, term, marks } = req.body;
 
-    // Validate required fields
-    if (!studentId || year === undefined || year === null || term === undefined || term === null) {
-      return res.status(400).json({ 
-        message: "Missing required fields: studentId, year, or term",
-        received: { studentId: !!studentId, year, term }
-      });
-    }
+    const marksRecord = await upsertSingleMarks({ studentId, year, term, marks }, teacherId);
 
-    // Validate marks object
-    if (!marks || typeof marks !== "object" || Array.isArray(marks)) {
-      return res.status(400).json({ message: "Marks must be an object" });
-    }
-
-    // Convert year and term to numbers
-    const yearNum = Number(year);
-    const termNum = Number(term);
-    
-    if (isNaN(yearNum) || isNaN(termNum)) {
-      return res.status(400).json({ message: "Year and term must be valid numbers" });
-    }
-    
-    if (![1, 2, 3].includes(termNum)) {
-      return res.status(400).json({ message: "Term must be 1, 2, or 3" });
-    }
-
-    const student = await Student.findById(studentId);
-    if (!student) {
-      return res.status(404).json({ message: "Student not found" });
-    }
-
-    // Get grade category based on student grade
-    const { gradeCategory } = getSubjectsByGrade(student.grade);
-
-    // Validate grade category
-    if (gradeCategory === "unknown") {
-      return res.status(400).json({ 
-        message: `Invalid grade: ${student.grade}. Grade must be between 1-11.` 
-      });
-    }
-
-    // Clean marks object - remove null/undefined/empty values and ensure valid numbers
-    const cleanedMarks = {};
-    Object.keys(marks).forEach(key => {
-      const value = marks[key];
-      // Only include valid numeric values between 0-100
-      if (value !== null && value !== undefined && value !== "") {
-        const numValue = Number(value);
-        if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-          cleanedMarks[key] = numValue;
-        }
-      }
-    });
-    
-    // Ensure at least one mark is provided
-    if (Object.keys(cleanedMarks).length === 0) {
-      return res.status(400).json({ 
-        message: "At least one valid mark (0-100) must be provided" 
-      });
-    }
-
-    // Find and update or create marks record
-    let marksRecord = await Marks.findOne({ 
-      studentId, 
-      year: yearNum, 
-      term: termNum 
-    });
-
-    try {
-      if (marksRecord) {
-        // Update existing record
-        marksRecord.marks = cleanedMarks;
-        marksRecord.gradeLevel = gradeCategory;
-        await marksRecord.save();
-      } else {
-        // Create new record
-        marksRecord = new Marks({
-          studentId,
-          teacherId,
-          year: yearNum,
-          term: termNum,
-          marks: cleanedMarks,
-          gradeLevel: gradeCategory,
-        });
-        await marksRecord.save();
-      }
-    } catch (saveError) {
-      console.error("Error saving marks record:", saveError);
-      // Check if it's a validation error
-      if (saveError.name === 'ValidationError') {
-        return res.status(400).json({ 
-          message: "Validation error", 
-          error: saveError.message,
-          details: Object.keys(saveError.errors || {}).map(key => ({
-            field: key,
-            message: saveError.errors[key].message
-          }))
-        });
-      }
-      throw saveError; // Re-throw to be caught by outer catch
-    }
-
-    // Also update student model for backward compatibility
-    try {
-      if (!student.terms) {
-        student.terms = [];
-      }
-      const existingTerm = student.terms.find(t => t.year === yearNum && t.term === termNum);
-      if (existingTerm) {
-        existingTerm.marks = cleanedMarks;
-      } else {
-        student.terms.push({ year: yearNum, term: termNum, marks: cleanedMarks });
-      }
-      await student.save();
-    } catch (studentSaveError) {
-      console.error("Error updating student terms:", studentSaveError);
-      // Don't fail the request if student update fails, but log it
-    }
-
-    res.status(200).json({ message: "Marks saved successfully", marks: marksRecord });
+    return res.status(200).json({ message: 'Marks saved successfully', marks: marksRecord });
   } catch (err) {
-    console.error("Error in upsertMarks:", err);
-    // Log full error details for debugging
-    console.error("Error stack:", err.stack);
-    console.error("Error details:", {
-      studentId: req.body?.studentId,
-      year: req.body?.year,
-      term: req.body?.term,
-      marksKeys: req.body?.marks ? Object.keys(req.body.marks) : [],
-    });
-    res.status(500).json({ 
-      message: "Server error", 
-      error: err.message,
-      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    });
+    console.error('Error in upsertMarks:', err);
+    const status = err.status || 500;
+    return res.status(status).json({ message: err.message || 'Server error', error: err.stack });
   }
 };
+
+// Bulk upsert for teacher marks page
+export const upsertMarksBulk = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Unauthorized: User not authenticated' });
+    }
+
+    const teacherId = req.user.id;
+    const updates = req.body.updates;
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ message: 'updates must be a non-empty array' });
+    }
+
+    const results = [];
+    for (const update of updates) {
+      try {
+        const saved = await upsertSingleMarks(update, teacherId);
+        results.push({ studentId: update.studentId, success: true, marks: saved });
+      } catch (err) {
+        results.push({ studentId: update.studentId, success: false, message: err.message });
+      }
+    }
+
+    res.status(200).json({ message: 'Bulk upsert complete', results });
+  } catch (err) {
+    console.error('Error in upsertMarksBulk:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 
 // 📋 Get marks of a student with subject info
 // Works for admin, teacher, and student roles

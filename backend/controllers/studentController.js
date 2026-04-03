@@ -106,17 +106,33 @@ export const getStudentById = async (req, res) => {
 };
 
 /**
- * ✅ Update student
+ * ✅ Update student (with password sync)
  */
 export const updateStudent = async (req, res) => {
-  const data = { ...req.body };
-  if (data.grade) data.grade = `Grade ${parseGrade(data.grade)}`;
+  try {
+    const { username, password, ...studentData } = req.body;
+    
+    if (studentData.grade) {
+      studentData.grade = `Grade ${parseGrade(studentData.grade)}`;
+    }
 
-  const student = await Student.findByIdAndUpdate(req.params.id, data, { new: true });
-  if (!student) return res.status(404).json({ message: "Student not found" });
+    // Update student profile
+    const student = await Student.findByIdAndUpdate(req.params.id, studentData, { new: true });
+    if (!student) return res.status(404).json({ message: "Student not found" });
 
-  res.json(student);
+    // Sync password to User if provided
+    if (username && password) {
+      const { updateUserPassword } = await import('./authController.js');
+      await updateUserPassword(username, password);
+    }
+
+    res.json(student);
+  } catch (error) {
+    console.error("❌ updateStudent:", error.message);
+    res.status(500).json({ message: error.message });
+  }
 };
+
 
 /**
  * ✅ Auto-update student classes based on year

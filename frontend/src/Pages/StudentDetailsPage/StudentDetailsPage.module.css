@@ -103,3 +103,48 @@
 .attendanceBadge.low { background: #fee2e2; color: #b91c1c; }
 .attendanceBadge.medium { background: #fef9c3; color: #ca8a04; }
 .attendanceBadge.high { background: #dcfce7; color: #15803d; }
+
+/* Charts */
+.chartContainer { background: #f9fafb; padding: 16px; border-radius: 10px; margin-bottom: 20px; }
+.chartContainer h3 { margin: 0 0 12px 0; font-size: 16px; color: #111827; }
+
+.tableWrapper { margin-bottom: 20px; }
+.tableWrapper h3 { margin: 0 0 12px 0; font-size: 16px; color: #111827; }
+
+.statsRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 20px; }
+.stat { background: #f3f4f6; padding: 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+.stat .label { color: #6b7280; font-weight: 500; }
+.stat .value { font-size: 20px; font-weight: 700; color: #111827; }
+
+.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 20px; }
+.statCard { background: #f3f4f6; padding: 16px; border-radius: 8px; text-align: center; }
+.statCard .label { display: block; color: #6b7280; font-size: 12px; margin-bottom: 8px; }
+.statCard .bigValue { font-size: 28px; font-weight: 700; color: #111827; }
+.statCard .bigValue.good { color: #10b981; }
+.statCard .bigValue.warning { color: #f59e0b; }
+.statCard .bigValue.danger { color: #ef4444; }
+
+.progressBar { height: 12px; background: #e5e7eb; border-radius: 6px; overflow: hidden; margin-top: 12px; }
+.progressFill { height: 100%; transition: width 0.3s ease; }
+
+/* Assignments */
+.assignmentsList { display: flex; flex-direction: column; gap: 12px; }
+.assignmentCard { background: #f9fafb; padding: 16px; border-radius: 8px; border-left: 4px solid #2563eb; }
+.assignmentHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.assignmentTitle { font-weight: 600; color: #111827; }
+
+.badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.badge.completed { background: #dcfce7; color: #15803d; }
+.badge.pending { background: #dbeafe; color: #0369a1; }
+.badge.overdue { background: #fee2e2; color: #991b1b; }
+
+.assignmentCard p { margin: 6px 0; color: #6b7280; font-size: 14px; }
+.daysLeft { color: #f59e0b; }
+.daysOverdue { color: #ef4444; }
+
+.assignmentStats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 20px; }
+.assignmentStats .stat { background: #f3f4f6; padding: 12px; }
+.assignmentStats .stat .good { color: #10b981; }
+.assignmentStats .stat .warning { color: #f59e0b; }
+.assignmentStats .stat .danger { color: #ef4444; }
+

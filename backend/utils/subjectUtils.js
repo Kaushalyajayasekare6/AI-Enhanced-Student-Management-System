@@ -34,6 +34,7 @@ export const getSubjectsByGrade = (gradeLevel) => {
         { key: "maths", label: "Maths" },
         { key: "science", label: "Science" },
         { key: "religion", label: "Religion" },
+        { key: "assignmentPercentage", label: "Assignment %" },
       ],
     };
   } else if (gradeNum >= 6 && gradeNum <= 9) {
@@ -52,6 +53,7 @@ export const getSubjectsByGrade = (gradeLevel) => {
         { key: "pts", label: "PTS (Physical Training)" },
         { key: "health", label: "Health" },
         { key: "history", label: "History" },
+        { key: "assignmentPercentage", label: "Assignment %" },
       ],
     };
   } else if (gradeNum >= 10 && gradeNum <= 11) {
@@ -67,6 +69,7 @@ export const getSubjectsByGrade = (gradeLevel) => {
         { key: "cat1", label: "1st Catogory" },
         { key: "cat2", label: "2nd Catogory" },
         { key: "cat3", label: "3rd Catogory" },
+        { key: "assignmentPercentage", label: "Assignment %" },
       ],
     };
   }

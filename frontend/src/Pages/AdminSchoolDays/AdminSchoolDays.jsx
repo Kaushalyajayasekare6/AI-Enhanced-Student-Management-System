@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Sidebar from "../../Components/Sidebar/Sidebar";
-import Header from "../../Components/Header/Header";
+import AdminLayout from "../../Components/AdminLayout/AdminLayout";
 import styles from "./AdminSchoolDays.module.css";
 import axios from "axios";
 import { getStoredRole } from "../../utils/auth";
@@ -14,7 +13,16 @@ const AdminSchoolDays = () => {
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [isSchoolDay, setIsSchoolDay] = useState(true);
+  const [generatedYears, setGeneratedYears] = useState(new Set());
+  const [regenerating, setRegenerating] = useState(false);
+  const [generateMessage, setGenerateMessage] = useState("");
   const role = getStoredRole() || "admin";
+  const toLocalDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   // Get first and last day of current month
   const getMonthRange = () => {
@@ -23,15 +31,32 @@ const AdminSchoolDays = () => {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     return {
-      from: firstDay.toISOString().slice(0, 10),
-      to: lastDay.toISOString().slice(0, 10),
+      from: toLocalDateString(firstDay),
+      to: toLocalDateString(lastDay),
     };
+  };
+
+  const ensureYearGenerated = async (force = false) => {
+    const year = currentMonth.getFullYear();
+    if (!force && generatedYears.has(year)) return;
+
+    try {
+      await axios.post(
+        API_ENDPOINTS.SCHOOL_DAYS.AUTO_GENERATE,
+        { year },
+        { headers: getAuthHeaders() }
+      );
+      setGeneratedYears((prev) => new Set([...prev, year]));
+    } catch (error) {
+      console.error("Error auto-generating school calendar:", error);
+    }
   };
 
   // Fetch school days for current month
   const fetchSchoolDays = async () => {
     try {
       setLoading(true);
+      await ensureYearGenerated();
       const { from, to } = getMonthRange();
       const res = await axios.get(
         `${API_ENDPOINTS.SCHOOL_DAYS.BASE}?from=${from}&to=${to}`,
@@ -54,6 +79,22 @@ const AdminSchoolDays = () => {
     fetchSchoolDays();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMonth]);
+
+  const regenerateSelectedYear = async () => {
+    const year = currentMonth.getFullYear();
+    try {
+      setRegenerating(true);
+      setGenerateMessage("");
+      await ensureYearGenerated(true);
+      await fetchSchoolDays();
+      setGenerateMessage(`Holidays generated for ${year}`);
+    } catch (error) {
+      console.error("Error generating holidays:", error);
+      setGenerateMessage(`Failed to generate holidays for ${year}`);
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   // Open note modal for a date
   const openNoteModal = (date) => {
@@ -170,15 +211,15 @@ const AdminSchoolDays = () => {
     // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
-      const dateString = date.toISOString().slice(0, 10);
+      const dateString = toLocalDateString(date);
       const dayOfWeek = date.getDay();
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
       const schoolDay = schoolDays[dateString];
       const isSchoolDay = schoolDay
         ? schoolDay.isSchoolDay
-        : !isWeekend; // Default: weekdays are school days
+        : !isWeekend; // Default: weekdays Mon-Fri are school days
 
-      const isToday = dateString === new Date().toISOString().slice(0, 10);
+      const isToday = dateString === toLocalDateString(new Date());
       const hasNote = schoolDay?.description && schoolDay.description.trim() !== "";
 
       days.push(
@@ -195,8 +236,8 @@ const AdminSchoolDays = () => {
             hasNote
               ? schoolDay.description
               : isWeekend
-              ? "Weekend - Double click to add note"
-              : "Click to toggle - Double click to add note"
+              ? "Weekend Off - Double click to add note"
+              : "School Day - Click to toggle - Double click to add note"
           }
         >
           <div className={styles.dayNumber}>{day}</div>
@@ -250,17 +291,21 @@ const AdminSchoolDays = () => {
   };
 
   return (
-    <div className={styles.dashboard}>
-      <Sidebar role={role} />
-      <div className={styles.content}>
-        <Header />
-        <div className={styles.container}>
-          <h1 className={styles.title}>Manage School Days</h1>
-          <p className={styles.subtitle}>
-            Click on any date to toggle it as a school day or holiday
-          </p>
+    <AdminLayout title="Manage School Days" role={role}>
+      <div className={styles.container}>
+        <h1 className={styles.title}>Manage School Days</h1>
+        <p className={styles.subtitle}>
+Manage school calendar: Mon-Fri school days by default, Sat/Sun weekends off by default. Add real holidays as needed. Click to toggle.
+        </p>
 
           <div className={styles.calendarControls}>
+            <button
+              className={styles.regenerateButton}
+              onClick={regenerateSelectedYear}
+              disabled={regenerating}
+            >
+              {regenerating ? "Generating..." : "Generate Holidays"}
+            </button>
             <button
               className={styles.navArrow}
               onClick={() => navigateMonth(-1)}
@@ -292,6 +337,9 @@ const AdminSchoolDays = () => {
           ) : (
             <div className={styles.calendar}>{generateCalendar()}</div>
           )}
+          {generateMessage && (
+            <p className={styles.generateMessage}>{generateMessage}</p>
+          )}
 
           <div className={styles.legend}>
             <div className={styles.legendItem}>
@@ -304,7 +352,7 @@ const AdminSchoolDays = () => {
             </div>
             <div className={styles.legendItem}>
               <div className={`${styles.legendColor} ${styles.weekend}`}></div>
-              <span>Weekend (Default)</span>
+              <span>Weekend Off (Sat/Sun Default)</span>
             </div>
             <div className={styles.legendItem}>
               <span className={styles.noteIndicator}>📝</span>
@@ -316,7 +364,6 @@ const AdminSchoolDays = () => {
             💡 Click a date to toggle school day/holiday • Double-click to add/edit note
           </p>
         </div>
-      </div>
 
       {/* Note Modal */}
       {noteModalOpen && (
@@ -388,7 +435,7 @@ const AdminSchoolDays = () => {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 };
 

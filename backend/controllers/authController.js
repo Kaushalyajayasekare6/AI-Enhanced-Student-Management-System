@@ -39,6 +39,18 @@ export const loginUser = async (req, res) => {
   }
 };
 
+// 🔹 Update user password (for profile updates)
+export const updateUserPassword = async (username, newPassword) => {
+  const user = await User.findOne({ username });
+  if (!user) throw new Error(`User with username '${username}' not found`);
+  
+  user.password = newPassword; // plain text → triggers pre-save hash
+  await user.save();
+  
+  console.log(`✅ Password updated for ${username}`);
+  return user;
+};
+
 // 🔹 Get current user
 export const getCurrentUser = async (req, res) => {
   try {
@@ -48,3 +60,4 @@ export const getCurrentUser = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
